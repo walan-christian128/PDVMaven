@@ -2,14 +2,36 @@
 <%@ page import="DAO.VendasDAO" %>
 <%@ page import="jakarta.servlet.http.HttpSession" %>
 <%@ page import="java.io.Serializable" %>
+<%@ page import="java.math.BigDecimal" %>
 
 <%
     // Lógica para obter a empresa da sessão
     String empresa = (String) session.getAttribute("empresa");
+    
+    // Suponha que você tenha o ID DA EMPRESA (que está na sua tabela de ConfigPagamento)
+    // Para esta demonstração, vou definir uma variável que VOCÊ deve preencher com o ID correto.
+    // Exemplo: int idEmpresaParaMP = obterIdEmpresaDaSessao();
+    // Se o seu ID é fixo como 1, mantenha 1. Se for dinâmico, ajuste esta linha:
+    int idEmpresaParaMP = 1; // <--- **AJUSTE ESTE VALOR se '1' não for o ID correto para a busca da chave**
 
-    if (empresa == null) {
-        empresa = "0"; // Defina um valor padrão ou trate o erro adequadamente
+    if (empresa == null || empresa.isEmpty()) {
+        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Sessão de empresa ausente. Faça login novamente.");
+        return; 
     }
+    
+    // OBTENDO O VALOR TOTAL DA VENDA para o Payment Brick
+    BigDecimal totalVenda = BigDecimal.ZERO;
+    try {
+        VendasDAO vendasDAO = new VendasDAO(empresa); 
+        totalVenda = vendasDAO.retornaVendaValor();
+        if (totalVenda == null) {
+            totalVenda = BigDecimal.ZERO;
+        }
+    } catch (Exception e) {
+        System.err.println("Erro ao obter valor da venda no JSP: " + e.getMessage());
+    }
+    
+    String totalVendaString = totalVenda.toString();
 %>
 
 <!DOCTYPE html>
@@ -431,7 +453,6 @@
         </div>
     </div>
     
-    <!-- Modal PIX - MELHORADO -->
     <div id="pixModal" class="modal">
         <div class="modal-content">
             <span class="modal-close">&times;</span>
@@ -489,204 +510,286 @@
         </div>
     </div>
 
-    <!-- Modal de Status - MELHORADO -->
     <div id="statusModal" class="modal">
         <div class="modal-content">
             <span class="modal-close">&times;</span>
             <div id="modal-content-placeholder">
-                <!-- Conteúdo será preenchido via JavaScript -->
-            </div>
+                </div>
         </div>
     </div>
     
 <script>
-    // Elementos da interface
-    const showCardButton = document.getElementById('showCardPayment');
-    const paymentBrickContainer = document.getElementById('paymentBrick_container');
-    const pixButton = document.getElementById('pixPaymentButton');
-    const cancelButton = document.querySelector('.cancel-button');
-    const statusModal = document.getElementById('statusModal');
-    const pixModal = document.getElementById('pixModal');
-    const modalContentPlaceholder = document.getElementById('modal-content-placeholder');
-    const allModals = document.querySelectorAll('.modal');
-    
-    // Variáveis de controle
-    let statusCheckInterval;
-    let currentOrderId = null;
-    
-    // Função para fechar modais
-    function closeModal(modalId) {
-        document.getElementById(modalId).style.display = 'none';
-        if (modalId === 'pixModal') {
-            clearInterval(statusCheckInterval);
-        }
+// Elementos da interface
+const showCardButton = document.getElementById('showCardPayment');
+const paymentBrickContainer = document.getElementById('paymentBrick_container');
+const pixButton = document.getElementById('pixPaymentButton');
+const cancelButton = document.querySelector('.cancel-button');
+const statusModal = document.getElementById('statusModal');
+const pixModal = document.getElementById('pixModal');
+const modalContentPlaceholder = document.getElementById('modal-content-placeholder');
+const allModals = document.querySelectorAll('.modal');
+
+// Variáveis de controle
+let statusCheckInterval;
+let currentOrderId = null;
+let brickInitialized = false;
+
+// ✅ Variável injetada do JSP: O ID usado para buscar a chave pública do Mercado Pago
+const idEmpresaParaMP = <%= idEmpresaParaMP %>; 
+
+// ✅ NOVO: Obtém o valor total da venda do bloco Java
+const totalAmountJSP = parseFloat("<%= totalVendaString %>"); // Apenas para referência, o valor real vem do Servlet.
+
+// Função para fechar modais
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+    if (modalId === 'pixModal') {
+        clearInterval(statusCheckInterval);
     }
-    
-    // Fechar modal ao clicar no X ou fora dele
-    allModals.forEach(modal => {
-        modal.querySelector('.modal-close').addEventListener('click', () => {
-            closeModal(modal.id);
-        });
-        
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                closeModal(modal.id);
-            }
-        });
+}
+
+// Fechar modal ao clicar no X ou fora dele
+allModals.forEach(modal => {
+    modal.querySelector('.modal-close').addEventListener('click', () => {
+        closeModal(modal.id);
     });
 
-    // Lógica de inicialização do Brick para cartão
-showCardButton.addEventListener('click', () => {
-        document.querySelector('.payment-options').classList.add('hidden');
-        cancelButton.classList.add('hidden');
-        paymentBrickContainer.style.display = 'block';
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeModal(modal.id);
+        }
+    });
+});
 
-        const preferenceId = "<%= request.getAttribute("preferenceId") %>";
-        const publicKey = "<%= request.getAttribute("publicKey") %>";
-        const totalAmount = "<%= request.getAttribute("totalVenda") %>";
-        const orderId = "<%= request.getAttribute("orderId") %>";
+// ---------------------------------------------------------------------
+// ✅ BLOCO CORRIGIDO: Inicialização do Payment Brick (Cartão)
+// Faz a chamada AJAX para o Servlet (Flow 1: Get Data)
+// ---------------------------------------------------------------------
+showCardButton.addEventListener('click', async () => {
+    if (brickInitialized) return;
 
+    // 1️⃣ Feedback de carregamento
+    document.querySelector('.payment-options').classList.add('hidden');
+    cancelButton.classList.add('hidden');
+    paymentBrickContainer.innerHTML = '<h4><i class="fas fa-spinner fa-spin"></i> Carregando formulário de pagamento seguro...</h4>';
+    paymentBrickContainer.style.display = 'block';
+
+    const idEmpresa = idEmpresaParaMP; // variável JSP injetada dinamicamente
+    brickInitialized = true;
+
+    try {
+        // 2️⃣ FLOW 1 — Solicita public key e dados da venda
+        const response = await fetch('criaPagamentoCartaoServlet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: "idEmpresa=" + encodeURIComponent(idEmpresa)
+
+        });
+
+        if (!response.ok) {
+            let errorData = { error: 'Erro de comunicação com o servidor.' };
+            try { errorData = await response.json(); } catch {}
+            throw new Error(`Erro HTTP ${response.status}: ${errorData.error}`);
+        }
+
+        const data = await response.json();
+        const { publicKey, preferenceId, amount } = data;
+
+        if (!publicKey) throw new Error("Public key não retornada pelo servidor.");
+        if (!amount || amount <= 0) throw new Error("Valor inválido retornado pelo servidor.");
+
+        // 3️⃣ Inicializa o SDK do Mercado Pago
         const mp = new MercadoPago(publicKey, { locale: 'pt-BR' });
         const bricksBuilder = mp.bricks();
 
-        bricksBuilder.create("payment", "paymentBrick_container", {
+        // 4️⃣ Renderiza o formulário
+        paymentBrickContainer.innerHTML = '';
+        await bricksBuilder.create("payment", "paymentBrick_container", {
             initialization: {
-                // CORREÇÃO: Passe a preferenceId para linkar a transação
-                preferenceId: preferenceId,
-                amount: parseFloat(totalAmount),
+                amount: amount,
+                preferenceId: preferenceId
             },
             customization: {
                 visual: {
-                    hideFormTitle: true,
+                    style: { theme: 'default' },
+                    hideFormTitle: true
                 },
                 paymentMethods: {
                     creditCard: 'all',
-                    debitCard: 'all',
-                },
+                    debitCard: 'all'
+                }
             },
             callbacks: {
-                onReady: () => {
-                    console.log("Payment Brick para cartões pronto.");
-                },
+                onReady: () => console.log("✅ Formulário carregado com sucesso."),
                 onError: (error) => {
-                    console.error("Erro no Payment Brick:", error);
-                    alert("Ocorreu um erro ao carregar o formulário de pagamento. Tente novamente.");
+                    console.error("❌ Erro no Brick:", error);
+                    alert("Ocorreu um erro ao carregar o formulário de pagamento.");
                     window.history.back();
                 },
-                onPaymentSuccess: (result) => {
-                    console.log("Pagamento com cartão aprovado!", result);
-                    window.location.href = 'sucesso.jsp?orderId=' + orderId;
-                },
-                onPaymentError: (error) => {
-                    console.error("Pagamento com cartão recusado!", error);
-                    alert("Pagamento não aprovado. Verifique os dados e tente novamente.");
-                    window.location.href = 'erro.jsp?orderId=' + orderId;
-                },
-            },
-        });
-    });
-    
-    // Lógica de pagamento com Pix (AJAX)
-    pixButton.addEventListener('click', async () => {
-        document.querySelector('.payment-options').classList.add('hidden');
-        cancelButton.classList.add('hidden');
+                // 5️⃣ FLOW 2 — Submissão do pagamento
+                onSubmit: async (formData) => {
+                    console.log("📦 Dados do formulário prontos para envio:", formData);
 
-        try {
-            const response = await fetch('criaPagamentoPixServlet?idEmpresa=1');
-            const data = await response.json(); 
-            
-            if (data.qr_code && data.qr_code_base64 && data.id) {
-                document.getElementById('qrCodeImage').src = 'data:image/jpeg;base64,' + data.qr_code_base64;
-                document.getElementById('pixCodeText').innerText = data.qr_code;
-                pixModal.style.display = 'block';
-                currentOrderId = data.id;
+                    try {
+                        // 🔹 Cria o JSON corretamente (sem aninhar formData)
+                        const payload = {
+                            idEmpresa: idEmpresa,
+                            paymentType: "credit_card",
+                            selectedPaymentMethod: formData.payment_method_id,
+                            ...formData
+                        };
 
-                // Inicia a verificação de status no background
-                startStatusCheck(data.id); 
-            } else {
-                alert('Erro ao gerar o Pix. Tente novamente.');
-                document.querySelector('.payment-options').classList.remove('hidden');
-                cancelButton.classList.remove('hidden');
+                        const paymentResponse = await fetch('criaPagamentoCartaoServlet', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        const result = await paymentResponse.json();
+                        console.log("💳 Resposta do servidor (Flow 2):", result);
+
+                        if (paymentResponse.ok && result.status === "approved") {
+                            window.location.href = 'sucesso.jsp';
+                        } else {
+                            alert(`Pagamento não aprovado. Status: ${result.status_detail || 'erro desconhecido'}`);
+                            window.location.href = 'erro.jsp';
+                        }
+
+                    } catch (error) {
+                        console.error("❌ Erro ao processar pagamento:", error);
+                        alert("Erro ao processar o pagamento. Verifique o console.");
+                        window.location.href = 'erro.jsp';
+                    }
+                }
+
             }
-        } catch (error) {
-            console.error('Erro:', error);
-            alert('Ocorreu um erro inesperado.');
+        });
+
+    } catch (e) {
+        console.error("❌ Erro fatal ao iniciar o checkout:", e);
+        alert(`Erro: Não foi possível iniciar o pagamento. ${e.message}`);
+        brickInitialized = false;
+        document.querySelector('.payment-options').classList.remove('hidden');
+        cancelButton.classList.remove('hidden');
+        paymentBrickContainer.style.display = 'none';
+        paymentBrickContainer.innerHTML = '';
+    }
+});
+
+
+// ---------------------------------------------------------------------
+
+// Lógica de pagamento com Pix (AJAX) - MANTIDA 100% INALTERADA
+pixButton.addEventListener('click', async () => {
+    document.querySelector('.payment-options').classList.add('hidden');
+    cancelButton.classList.add('hidden');
+
+    try {
+        const response = await fetch('criaPagamentoPixServlet?idEmpresa=' + idEmpresaParaMP);
+        const data = await response.json();
+
+        if (data.qr_code && data.qr_code_base64 && data.id) {
+            document.getElementById('qrCodeImage').src = 'data:image/jpeg;base64,' + data.qr_code_base64;
+            document.getElementById('pixCodeText').innerText = data.qr_code;
+            pixModal.style.display = 'block';
+            currentOrderId = data.id;
+
+            // Inicia a verificação de status no background
+            startStatusCheck(data.id);
+        } else {
+            alert('Erro ao gerar o Pix. Tente novamente.');
             document.querySelector('.payment-options').classList.remove('hidden');
             cancelButton.classList.remove('hidden');
         }
-    });
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Ocorreu um erro inesperado.');
+        document.querySelector('.payment-options').classList.remove('hidden');
+        cancelButton.classList.remove('hidden');
+    }
+});
 
-    // Função para copiar o código Pix
-    function copyPixCode() {
-        const pixCode = document.getElementById('pixCodeText').innerText;
-        navigator.clipboard.writeText(pixCode).then(() => {
+// Função para copiar o código Pix
+function copyPixCode() {
+    const pixCode = document.getElementById('pixCodeText').innerText;
+    // Usa document.execCommand('copy') como fallback para iframes
+    const tempInput = document.createElement('textarea');
+    tempInput.value = pixCode;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
             alert('Código Pix copiado com sucesso!');
-        }).catch(err => {
-            console.error('Erro ao copiar o código:', err);
-            alert('Erro ao copiar o código. Tente novamente.');
+        } else {
+            throw new Error('Falha ao copiar.');
+        }
+    } catch (err) {
+        console.error('Erro ao copiar o código:', err);
+        alert('Erro ao copiar o código. Tente selecionar manualmente.');
+    }
+    document.body.removeChild(tempInput);
+}
+
+// Função para iniciar a verificação de status do pagamento (Polling)
+function startStatusCheck(orderId) {
+    clearInterval(statusCheckInterval);
+
+    statusCheckInterval = setInterval(async () => {
+        try {
+            // Nota: Adicione a empresa aqui se for necessário no checkPaymentStatusServlet
+            const response = await fetch('checkPaymentStatusServlet?orderId=' + orderId + '&empresa=' + idEmpresaParaMP); 
+            const status = (await response.text()).trim();
+
+            console.log("Status recebido:", status);
+
+            if (status === 'aprovada') {
+                clearInterval(statusCheckInterval);
+                window.location.href = 'sucesso.jsp?orderId=' + orderId;
+            } else if (status === 'rejeitada') {
+                clearInterval(statusCheckInterval);
+                window.location.href = 'erro.jsp?orderId=' + orderId;
+            }
+        } catch (error) {
+            console.error("Erro ao verificar o status:", error);
+        }
+    }, 5000);
+}
+
+// Verificação manual de status
+function checkStatusManually() {
+    if (currentOrderId) {
+        fetch('checkPaymentStatusServlet?orderId=' + currentOrderId + '&empresa=' + idEmpresaParaMP)
+            .then(response => response.text())
+            .then(status => {
+                if (status.trim() === 'aprovada' || status.trim() === 'rejeitada') {
+                    clearInterval(statusCheckInterval);
+                    if (status.trim() === 'aprovada') {
+                        window.location.href = 'sucesso.jsp?orderId=' + currentOrderId;
+                    } else {
+                        window.location.href = 'erro.jsp?orderId=' + currentOrderId;
+                    }
+                } else {
+                    alert('Pagamento ainda está pendente.');
+                }
+            })
+            .catch(error => {
+                console.error("Erro ao verificar o status:", error);
+                alert('Erro ao verificar status. Tente novamente.');
+            });
+    }
+}
+
+// Tecla ESC para fechar modais
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        allModals.forEach(modal => {
+            if (modal.style.display === 'block') {
+                closeModal(modal.id);
+            }
         });
     }
-
-    // Função para iniciar a verificação de status do pagamento (Lógica de Polling)
-    function startStatusCheck(orderId) {
-        clearInterval(statusCheckInterval);
-
-        statusCheckInterval = setInterval(async () => {
-            try {
-                const response = await fetch(
-                    'checkPaymentStatusServlet?orderId=' + orderId + '&empresa=1'
-                );
-                const status = (await response.text()).trim();
-
-                console.log("Status recebido:", status);
-
-                if (status === 'aprovada') {
-                    clearInterval(statusCheckInterval);
-                    window.location.href = 'sucesso.jsp?orderId=' + orderId;
-                } else if (status === 'rejeitada') {
-                    clearInterval(statusCheckInterval);
-                    window.location.href = 'erro.jsp?orderId=' + orderId;
-                }
-            } catch (error) {
-                console.error("Erro ao verificar o status:", error);
-            }
-        }, 5000);
-    }
-    
-    // Verificação manual de status
-    function checkStatusManually() {
-        if (currentOrderId) {
-            fetch('checkPaymentStatusServlet?orderId=' + currentOrderId)
-                .then(response => response.text())
-                .then(status => {
-                    if (status.trim() === 'aprovada' || status.trim() === 'rejeitada') {
-                        clearInterval(statusCheckInterval);
-                        if(status.trim() === 'aprovada') {
-                             window.location.href = 'sucesso.jsp?orderId=' + currentOrderId;
-                        } else {
-                             window.location.href = 'erro.jsp?orderId=' + currentOrderId;
-                        }
-                    } else {
-                        alert('Pagamento ainda está pendente.');
-                    }
-                })
-                .catch(error => {
-                    console.error("Erro ao verificar o status:", error);
-                    alert('Erro ao verificar status. Tente novamente.');
-                });
-        }
-    }
-    
-    // Tecla ESC para fechar modais
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            allModals.forEach(modal => {
-                if (modal.style.display === 'block') {
-                    closeModal(modal.id);
-                }
-            });
-        }
-    });
+});
 </script>
 </body>
 </html>

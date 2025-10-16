@@ -7,6 +7,8 @@ import java.sql.SQLException;
 
 import javax.naming.NamingException;
 
+import org.apache.commons.collections.functors.IfClosure;
+
 import Conexao.ConectionDataBases;
 import Model.ConfigPagamento;
 
@@ -24,6 +26,28 @@ public class ConfigPagamentoDAO {
             e.printStackTrace(); // Trate a exceção conforme necessário
         }
     }
+ // em ConfigPagamentoDAO.java
+    public String publicKey(int id) throws NamingException, ClassNotFoundException {
+    	String publicKey = null;
+       String sql = "SELECT publickey FROM configuracoes_pagamento WHERE empresa_id = ?";
+       try {
+		PreparedStatement stmt = con.prepareStatement(sql);
+		stmt.setInt(1, id);
+		
+		ResultSet rs = stmt.executeQuery();
+		if(rs.next()) {
+			
+			publicKey = rs.getString("publickey");
+			
+		}
+		
+	} catch (Exception e) {
+		e.printStackTrace();
+	}
+       return publicKey;
+    }
+
+    
     public ConfigPagamento buscarPorEmpresa(int empresaId) {
         String sql = "SELECT * FROM configuracoes_pagamento WHERE empresa_id = ?";
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
