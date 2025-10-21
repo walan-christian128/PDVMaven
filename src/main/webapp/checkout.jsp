@@ -537,8 +537,8 @@ let brickInitialized = false;
 // ✅ Variável injetada do JSP: O ID usado para buscar a chave pública do Mercado Pago
 const idEmpresaParaMP = <%= idEmpresaParaMP %>; 
 
-// ✅ NOVO: Obtém o valor total da venda do bloco Java
-const totalAmountJSP = parseFloat("<%= totalVendaString %>"); // Apenas para referência, o valor real vem do Servlet.
+// ✅ Obtém o valor total da venda do bloco Java
+const totalAmountJSP = parseFloat("<%= totalVendaString %>");
 
 // Função para fechar modais
 function closeModal(modalId) {
@@ -563,7 +563,6 @@ allModals.forEach(modal => {
 
 // ---------------------------------------------------------------------
 // ✅ BLOCO CORRIGIDO: Inicialização do Payment Brick (Cartão)
-// Faz a chamada AJAX para o Servlet (Flow 1: Get Data)
 // ---------------------------------------------------------------------
 showCardButton.addEventListener('click', async () => {
     if (brickInitialized) return;
@@ -574,16 +573,15 @@ showCardButton.addEventListener('click', async () => {
     paymentBrickContainer.innerHTML = '<h4><i class="fas fa-spinner fa-spin"></i> Carregando formulário de pagamento seguro...</h4>';
     paymentBrickContainer.style.display = 'block';
 
-    const idEmpresa = idEmpresaParaMP; // variável JSP injetada dinamicamente
+    const idEmpresa = idEmpresaParaMP;
     brickInitialized = true;
 
     try {
-        // 2️⃣ FLOW 1 — Solicita public key e dados da venda
+        // 2️⃣ FLOW 1 — Solicita public key e dados da venda (Usa idEmpresa no body, mas tipo x-www-form-urlencoded)
         const response = await fetch('criaPagamentoCartaoServlet', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: "idEmpresa=" + encodeURIComponent(idEmpresa)
-
         });
 
         if (!response.ok) {
@@ -624,19 +622,21 @@ showCardButton.addEventListener('click', async () => {
                 onError: (error) => {
                     console.error("❌ Erro no Brick:", error);
                     alert("Ocorreu um erro ao carregar o formulário de pagamento.");
-                    window.history.back();
+                    // Não redirecionar, apenas resetar a UI para permitir nova tentativa
+                    // window.history.back(); 
                 },
-                // 5️⃣ FLOW 2 — Submissão do pagamento
+                // 5️⃣ FLOW 2 — Submissão do pagamento (AQUI ESTÁ A CORREÇÃO DE DADOS)
                 onSubmit: async (formData) => {
                     console.log("📦 Dados do formulário prontos para envio:", formData);
 
                     try {
-                        // 🔹 Cria o JSON corretamente (sem aninhar formData)
+                        // 🔹 CORREÇÃO: Cria o JSON, INCLUINDO explicitamente o idEmpresa, 
+                        // que o Servlet espera para buscar as credenciais
                         const payload = {
-                            idEmpresa: idEmpresa,
+                            idEmpresa: idEmpresa, // Adiciona o ID da empresa para o Servlet
                             paymentType: "credit_card",
                             selectedPaymentMethod: formData.payment_method_id,
-                            ...formData
+                            formData: formData // Envia o formData completo dentro da chave "formData"
                         };
 
                         const paymentResponse = await fetch('criaPagamentoCartaoServlet', {
@@ -651,7 +651,9 @@ showCardButton.addEventListener('click', async () => {
                         if (paymentResponse.ok && result.status === "approved") {
                             window.location.href = 'sucesso.jsp';
                         } else {
-                            alert(`Pagamento não aprovado. Status: ${result.status_detail || 'erro desconhecido'}`);
+                            // Se o pagamento não for aprovado ou der erro 500, o resultado virá aqui
+                            const statusDetail = result.status_detail || (result.error ? result.error : 'erro desconhecido');
+                            alert(`Pagamento não aprovado. Detalhe: ${statusDetail}`);
                             window.location.href = 'erro.jsp';
                         }
 
@@ -678,13 +680,14 @@ showCardButton.addEventListener('click', async () => {
 
 
 // ---------------------------------------------------------------------
-
 // Lógica de pagamento com Pix (AJAX) - MANTIDA 100% INALTERADA
+// ---------------------------------------------------------------------
 pixButton.addEventListener('click', async () => {
     document.querySelector('.payment-options').classList.add('hidden');
     cancelButton.classList.add('hidden');
 
     try {
+        // Lógica PIX mantida intacta
         const response = await fetch('criaPagamentoPixServlet?idEmpresa=' + idEmpresaParaMP);
         const data = await response.json();
 
@@ -694,7 +697,6 @@ pixButton.addEventListener('click', async () => {
             pixModal.style.display = 'block';
             currentOrderId = data.id;
 
-            // Inicia a verificação de status no background
             startStatusCheck(data.id);
         } else {
             alert('Erro ao gerar o Pix. Tente novamente.');
@@ -709,10 +711,9 @@ pixButton.addEventListener('click', async () => {
     }
 });
 
-// Função para copiar o código Pix
+// Função para copiar o código Pix (mantida)
 function copyPixCode() {
     const pixCode = document.getElementById('pixCodeText').innerText;
-    // Usa document.execCommand('copy') como fallback para iframes
     const tempInput = document.createElement('textarea');
     tempInput.value = pixCode;
     document.body.appendChild(tempInput);
@@ -731,13 +732,12 @@ function copyPixCode() {
     document.body.removeChild(tempInput);
 }
 
-// Função para iniciar a verificação de status do pagamento (Polling)
+// Função para iniciar a verificação de status do pagamento (Polling) (mantida)
 function startStatusCheck(orderId) {
     clearInterval(statusCheckInterval);
 
     statusCheckInterval = setInterval(async () => {
         try {
-            // Nota: Adicione a empresa aqui se for necessário no checkPaymentStatusServlet
             const response = await fetch('checkPaymentStatusServlet?orderId=' + orderId + '&empresa=' + idEmpresaParaMP); 
             const status = (await response.text()).trim();
 
@@ -756,7 +756,7 @@ function startStatusCheck(orderId) {
     }, 5000);
 }
 
-// Verificação manual de status
+// Verificação manual de status (mantida)
 function checkStatusManually() {
     if (currentOrderId) {
         fetch('checkPaymentStatusServlet?orderId=' + currentOrderId + '&empresa=' + idEmpresaParaMP)
@@ -780,7 +780,7 @@ function checkStatusManually() {
     }
 }
 
-// Tecla ESC para fechar modais
+// Tecla ESC para fechar modais (mantida)
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         allModals.forEach(modal => {

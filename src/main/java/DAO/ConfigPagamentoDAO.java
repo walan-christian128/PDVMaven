@@ -27,25 +27,46 @@ public class ConfigPagamentoDAO {
         }
     }
  // em ConfigPagamentoDAO.java
-    public String publicKey(int id) throws NamingException, ClassNotFoundException {
-    	String publicKey = null;
-       String sql = "SELECT publickey FROM configuracoes_pagamento WHERE empresa_id = ?";
-       try {
-		PreparedStatement stmt = con.prepareStatement(sql);
-		stmt.setInt(1, id);
-		
-		ResultSet rs = stmt.executeQuery();
-		if(rs.next()) {
-			
-			publicKey = rs.getString("publickey");
-			
-		}
-		
-	} catch (Exception e) {
-		e.printStackTrace();
-	}
-       return publicKey;
+    public ConfigPagamento getConfiguracaoMP(int idEmpresa) 
+            throws NamingException, ClassNotFoundException, SQLException {
+        
+        ConfigPagamento config = null;
+        // 💡 BUSCA O PAR DE CHAVES NECESSÁRIO EM UMA ÚNICA CONSULTA
+        String sql = "SELECT publickey, access_token FROM configuracoes_pagamento WHERE empresa_id = ?";
+        
+        // Uso de try-with-resources para garantir o fechamento dos recursos
+        try (PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setInt(1, idEmpresa);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    config = new ConfigPagamento();
+                    
+                    String publicKeyDB = rs.getString("publickey");
+                    String accessTokenDB = rs.getString("access_token");
+                    
+                    // 💡 Aplica o .trim() para remover espaços em branco invisíveis (Solução para "invalid_token")
+                    if (publicKeyDB != null) {
+                        config.setPublicKey(publicKeyDB.trim());
+                    }
+                    if (accessTokenDB != null) {
+                        config.setAccessToken(accessTokenDB.trim());
+                    }
+                    
+                    System.out.println("DAO: Configurações MP carregadas e validadas para empresa " + idEmpresa);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Erro ao buscar configuração MP no DB:");
+            e.printStackTrace();
+            throw e; 
+        }
+        
+        return config; 
     }
+    
+    // ... (Outros métodos da sua classe DAO) ...
+
 
     
     public ConfigPagamento buscarPorEmpresa(int empresaId) {

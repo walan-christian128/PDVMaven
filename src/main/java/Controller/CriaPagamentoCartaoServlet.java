@@ -8,9 +8,12 @@ import com.mercadopago.client.common.IdentificationRequest;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
 import com.mercadopago.resources.payment.Payment;
+import com.mercadopago.core.MPRequestOptions;
 import com.google.gson.JsonObject;
 import DAO.ConfigPagamentoDAO;
 import DAO.VendasDAO;
+import Model.ConfigPagamento;
+import Model.Vendas; // Importar o modelo Vendas
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -19,14 +22,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter; 
 import java.math.BigDecimal;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.sql.SQLException;
 import java.util.UUID;
+import java.util.Collections;
 import javax.naming.NamingException;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -36,7 +37,6 @@ import org.json.JSONException;
 @WebServlet("/criaPagamentoCartaoServlet")
 public class CriaPagamentoCartaoServlet extends HttpServlet {
     
-    // Função utilitária para converter Stack Trace em String
     private String getStackTraceAsString(Throwable t) {
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
@@ -55,7 +55,6 @@ public class CriaPagamentoCartaoServlet extends HttpServlet {
         HttpSession session = request.getSession();
         String empresa = (String) session.getAttribute("empresa");
         System.out.println("🔹 Servlet 'CriaPagamentoCartaoServlet' (BRICK - PAGAMENTO DIRETO) executado.");
-        System.out.println("Empresa selecionada: " + empresa);
 
         if (empresa == null || empresa.isEmpty()) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -64,19 +63,16 @@ public class CriaPagamentoCartaoServlet extends HttpServlet {
         }
 
         String idEmpresaParam = request.getParameter("idEmpresa");
-        int idEmpresa = 0; // Inicializa a variável para ser usada em ambos os fluxos
-
-        // Variável para armazenar o JSON bruto, útil em caso de erro no Flow 2
+        int idEmpresa = 0;
         String jsonBruto = null; 
+        ConfigPagamento config = null; 
 
         try {
             ConfigPagamentoDAO dbManager = new ConfigPagamentoDAO(empresa);
             VendasDAO dao = new VendasDAO(empresa);
 
             if (idEmpresaParam != null && !idEmpresaParam.isEmpty()) {
-                // =======================================================
                 // FLUXO 1: INICIALIZAÇÃO (FRONT QUER PUBLIC KEY E AMOUNT)
-                // =======================================================
                 try {
                     idEmpresa = Integer.parseInt(idEmpresaParam);
                 } catch (NumberFormatException e) {
@@ -90,19 +86,23 @@ public class CriaPagamentoCartaoServlet extends HttpServlet {
                 
                 System.out.println("🔑 Iniciando fluxo de obtenção de chaves e dados de venda para ID: " + idEmpresa);
                 
-                String publicKey = dbManager.publicKey(idEmpresa);
-                BigDecimal amount = dao.retornaVendaValor();
+                config = dbManager.getConfiguracaoMP(idEmpresa);
                 
-                // NOVO LOG: Loga o final da Public Key
-                String publicKeyDisplay = publicKey != null && publicKey.length() > 4 ? "..." + publicKey.substring(publicKey.length() - 4) : publicKey;
-                System.out.println("✅ Public Key obtida. Tamanho: " + (publicKey != null ? publicKey.length() : 0) + " caracteres. Final: " + publicKeyDisplay);
-                
-                if (publicKey == null || publicKey.isEmpty()) {
-                    System.err.println("❌ Falha de Dados (401): Chave pública não encontrada ou vazia para ID: " + idEmpresa);
+                if (config == null || config.getPublicKey() == null || config.getPublicKey().isEmpty()) {
+                    System.err.println("❌ Falha de Dados (401): Chave pública ou config MP não encontrada para ID: " + idEmpresa);
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); 
                     out.print("{\"error\": \"Chave pública não encontrada para a empresa. Verifique a configuração.\"}");
                     return;
                 }
+                
+                String publicKey = config.getPublicKey();
+                
+                session.setAttribute("configPagamento", config);
+
+                BigDecimal amount = dao.retornaVendaValor();
+                
+                String publicKeyDisplay = publicKey.length() > 4 ? "..." + publicKey.substring(publicKey.length() - 4) : publicKey;
+                System.out.println("✅ Public Key obtida. Final: " + publicKeyDisplay);
                 
                 if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
                     System.err.println("❌ Falha de Dados (400): Valor da transação inválido ou nulo. Valor retornado: " + amount);
@@ -117,38 +117,37 @@ public class CriaPagamentoCartaoServlet extends HttpServlet {
                 jsonResponse.addProperty("preferenceId", UUID.randomUUID().toString()); 
                 
                 out.print(jsonResponse.toString());
-                // LOG ATUALIZADO: Confirma o final da Public Key enviada ao front
-                System.out.println("✅ Dados de inicialização enviados ao front. PublicKey final: " + publicKeyDisplay + ", Valor: " + amount);
+                System.out.println("✅ Dados de inicialização enviados ao front.");
                 
             } else {
-                // =======================================================
                 // FLUXO 2: SUBMISSÃO DE PAGAMENTO (FRONT ENVIA O JSON DO BRICK)
-                // =======================================================
                 
                 Object idEmpresaObj = session.getAttribute("idEmpresa");
+                Object configObj = session.getAttribute("configPagamento");
+                
                 if (idEmpresaObj == null) {
                     response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                    out.print("{\"error\": \"ID da empresa ausente na sessão. Recarregue a página e tente novamente.\"}");
+                    out.print("{\"error\": \"ID da empresa ausente na sessão. Recarregue a página.\"}");
                     return;
                 }
                 idEmpresa = (int) idEmpresaObj;
                 
-                System.out.println("💳 Iniciando fluxo de criação de pagamento para ID: " + idEmpresa);
+                if (configObj instanceof ConfigPagamento) {
+                    config = (ConfigPagamento) configObj;
+                } else {
+                    // Se não estiver na sessão, busca no DB usando o ID da empresa (se necessário)
+                    config = dbManager.getConfiguracaoMP(idEmpresa); 
+                }
 
-                String accessToken = dbManager.accessToken(idEmpresa); 
-                
-                if (accessToken == null || accessToken.isEmpty()) {
+                if (config == null || config.getAccessToken() == null || config.getAccessToken().isEmpty()) {
                     System.err.println("❌ Token de acesso ausente ou vazio no DB.");
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     out.print("{\"error\": \"Token de acesso (Access Token) não encontrado para a empresa.\"}");
                     return;
                 }
-                
-                // LOG ATUALIZADO: Ajuda a confirmar que o token está sendo lido (final da chave)
-                String tokenDisplay = accessToken.length() > 4 ? "..." + accessToken.substring(accessToken.length() - 4) : accessToken;
-                System.out.println("🔑 Access Token obtido. Tamanho: " + accessToken.length() + " caracteres. Final: " + tokenDisplay);
-                
-                MercadoPagoConfig.setAccessToken(accessToken);
+
+                String accessToken = config.getAccessToken(); 
+                MercadoPagoConfig.setAccessToken(accessToken); 
 
                 // RECUPERA o CORPO JSON
                 StringBuilder jb = new StringBuilder();
@@ -159,30 +158,25 @@ public class CriaPagamentoCartaoServlet extends HttpServlet {
                     }
                 }
                 
-                jsonBruto = jb.toString(); // <--- Captura o JSON Bruto
+                jsonBruto = jb.toString();
                 
                 JSONObject jsonPayload;
                 if (jsonBruto.trim().startsWith("[")) {
-                    // Se for um array (estrutura enviada pelo Brick)
                     JSONArray jsonArray = new JSONArray(jsonBruto);
                     if (jsonArray.length() > 0) {
                         jsonPayload = jsonArray.getJSONObject(0);
-                        System.out.println("ℹ️ JSON ajustado: Removido array externo.");
                     } else {
                         throw new JSONException("Array JSON vazio.");
                     }
                 } else {
-                    // Se for um objeto JSON normal
                     jsonPayload = new JSONObject(jsonBruto);
                 }
                 
-                // EXTRAI O FORM DATA ANINHADO
-                JSONObject formData = jsonPayload.getJSONObject("formData");
-                JSONObject payerData = formData.getJSONObject("payer"); 
+                // CORREÇÃO DO JSON ANINHADO:
+                JSONObject outerFormData = jsonPayload.getJSONObject("formData");
+                JSONObject innerFormData = outerFormData.getJSONObject("formData"); 
+                JSONObject payerData = innerFormData.getJSONObject("payer");
                 
-                System.out.println("🧾 Dados de pagamento extraídos do 'formData': " + formData);
-
-                // Busca valor total da venda
                 BigDecimal amount = dao.retornaVendaValor();
                 
                 if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
@@ -191,24 +185,50 @@ public class CriaPagamentoCartaoServlet extends HttpServlet {
                     return;
                 }
 
+                // Lógica de Vendas Unificada
                 int idVenda = dao.retornaVenda();
                 String referenciaVenda = UUID.randomUUID().toString();
-                dao.atualizarStatusVenda(idVenda, referenciaVenda);
+                String idempotencyKey = UUID.randomUUID().toString(); 
+                
+                // 1. Cria e configura o objeto Vendas (Status PENDENTE)
+                Vendas vendaParaAtualizar = new Vendas(); // Assumindo que você tem o modelo Vendas importado
+                // Defina apenas os campos necessários para a atualização de status/referência
+                vendaParaAtualizar.setExternalReference(referenciaVenda);
+                vendaParaAtualizar.setPgTotalOnline(amount);
+                vendaParaAtualizar.setSetStatusVenda("PENDENTE"); 
+
+                // 2. Atualiza o banco de dados
+                boolean atualizado = dao.atualizarVendaOnline(idVenda, vendaParaAtualizar); // Adapte o nome do método DAO
+                // Seu método original: dao.atualizarStatusVenda(idVenda, referenciaVenda);
+
+                if (atualizado) {
+                    System.out.println("Venda " + idVenda + " (Cartão) atualizada com externalReference " + referenciaVenda + " e Status PENDENTE.");
+                } else {
+                    System.err.println("Falha ao atualizar a venda " + idVenda + " (Cartão). Verifique se ela existe.");
+                }
+
+                // LOGS DE DEBUG ADICIONADOS AQUI
+                String payerEmail = payerData.getString("email");
+                String cardToken = innerFormData.getString("token");
+                String tokenDisplay = cardToken.length() > 10 ? cardToken.substring(0, 4) + "... (Token)" : cardToken + " (Token)";
+                
+                System.out.println("DEBUG MP PAYER EMAIL: " + payerEmail);
+                System.out.println("DEBUG MP CARD TOKEN: " + tokenDisplay);
+                System.out.println("DEBUG MP AMOUNT: " + amount);
+                // ------------------------------------
 
                 PaymentClient client = new PaymentClient();
 
                 PaymentCreateRequest paymentCreateRequest = PaymentCreateRequest.builder()
                         .transactionAmount(amount) 
-                        .token(formData.getString("token")) 
+                        .token(cardToken)
                         .description("Pagamento via cartão - Venda #" + idVenda)
-                        .installments(formData.getInt("installments"))
-                        // CORREÇÃO 1: Usando a chave correta "payment_method_id" (snake_case)
-                        .paymentMethodId(formData.getString("payment_method_id")) 
-                        // CORREÇÃO 2: Adicionando o issuer_id
-                        .issuerId(formData.getString("issuer_id")) 
+                        .installments(innerFormData.getInt("installments"))
+                        .paymentMethodId(innerFormData.getString("payment_method_id")) 
+                        .issuerId(innerFormData.getString("issuer_id")) 
                         .payer(
                             PaymentPayerRequest.builder()
-                                .email(payerData.getString("email"))
+                                .email(payerEmail)
                                 .identification(
                                     IdentificationRequest.builder()
                                         .type(payerData
@@ -224,14 +244,18 @@ public class CriaPagamentoCartaoServlet extends HttpServlet {
                         .externalReference(empresa + "_" + referenciaVenda)
                         .build();
 
+                System.out.println("💳 Enviando requisição de pagamento ao Mercado Pago com Idempotency Key: " + idempotencyKey);
+                
+                // CORREÇÃO FINAL: Usando MPRequestOptions
+                MPRequestOptions requestOptions = MPRequestOptions.builder()
+                    .customHeaders(Collections.singletonMap("X-Idempotency-Key", idempotencyKey))
+                    .build();
 
-                System.out.println("💳 Enviando requisição de pagamento ao Mercado Pago...");
-
-                Payment payment = client.create(paymentCreateRequest);
+                Payment payment = client.create(paymentCreateRequest, requestOptions); 
+                // Fim da Correção
 
                 System.out.println("✅ Pagamento criado com sucesso!");
                 System.out.println("Status: " + payment.getStatus());
-                System.out.println("ID: " + payment.getId());
 
                 JsonObject jsonResponse = new JsonObject();
                 jsonResponse.addProperty("id", payment.getId());
@@ -246,18 +270,19 @@ public class CriaPagamentoCartaoServlet extends HttpServlet {
         } catch (MPApiException e) {
             System.err.println("❌ Erro na API do Mercado Pago:");
             System.err.println("Código do Status HTTP: " + e.getStatusCode()); 
-            System.err.println("Mensagem da API: " + e.getApiResponse().getContent());
+            String mpErrorContent = e.getApiResponse() != null ? e.getApiResponse().getContent() : "Conteúdo de erro indisponível.";
+            System.err.println("Mensagem da API: " + mpErrorContent); 
             System.out.println(getStackTraceAsString(e)); 
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            out.print("{\"error\": \"Erro ao criar pagamento (API MP): " + e.getMessage() + "\"}");
+            out.print("{\"error\": \"Erro ao criar pagamento (API MP): " + e.getMessage() + "\", \"mp_detail\": " + JSONObject.stringToValue(mpErrorContent) + "}");
         } catch (JSONException e) {
-             System.err.println("❌ Erro ao analisar JSON: A requisição não enviou um JSON válido. Isso indica um erro no Flow 2.");
+             System.err.println("❌ Erro ao analisar JSON: A requisição não enviou um JSON válido.");
              if (jsonBruto != null) {
-                 System.err.println("❌ JSON BRUTO RECEBIDO (Tamanho: " + jsonBruto.length() + "): [" + jsonBruto + "]");
+                 System.err.println("❌ JSON BRUTO RECEBIDO: [" + jsonBruto + "]");
              }
              System.out.println(getStackTraceAsString(e)); 
              response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-             out.print("{\"error\": \"Corpo da requisição inválido (Não é JSON) ou estrutura de dados inesperada.\"}");
+             out.print("{\"error\": \"Corpo da requisição inválido.\"}");
         }
         catch (MPException e) {
              System.err.println("❌ Erro no SDK do Mercado Pago ou conexão: ");
@@ -266,10 +291,8 @@ public class CriaPagamentoCartaoServlet extends HttpServlet {
              out.print("{\"error\": \"Erro no SDK do Mercado Pago.\"}");
         }
         catch (NamingException | ClassNotFoundException | SQLException e) {
-             System.err.println("❌ Erro de Banco de Dados ou Configuração (DataSource/Driver): " + e.getMessage());
-             System.out.println("----------------- STACK TRACE COMPLETO DO ERRO DE DB -----------------");
+             System.err.println("❌ Erro de Banco de Dados ou Configuração: " + e.getMessage());
              System.out.println(getStackTraceAsString(e)); 
-             System.err.println("----------------------------------------------------------------------");
              response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
              out.print("{\"error\": \"Erro interno de configuração de dados.\"}");
         } catch (Exception e) { 
@@ -278,41 +301,5 @@ public class CriaPagamentoCartaoServlet extends HttpServlet {
              response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
              out.print("{\"error\": \"Erro inesperado no servidor: " + e.getMessage() + "\"}");
         }
-    }
-
-    private String getNgrokTunnelUrl() {
-        // Implementação mantida inalterada
-        try {
-            URL url = new URL("http://127.0.0.1:4040/api/tunnels");
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setConnectTimeout(5000);
-            conn.setReadTimeout(5000);
-
-            if (conn.getResponseCode() != 200) {
-                return null;
-            }
-
-            BufferedReader br = new BufferedReader(new InputStreamReader((conn.getInputStream())));
-            StringBuilder response = new StringBuilder();
-            String output;
-            while ((output = br.readLine()) != null) {
-                response.append(output);
-            }
-            conn.disconnect();
-
-            JSONObject json = new JSONObject(response.toString());
-            JSONArray tunnels = json.getJSONArray("tunnels");
-
-            for (int i = 0; i < tunnels.length(); i++) {
-                JSONObject tunnel = tunnels.getJSONObject(i);
-                if (tunnel.getString("proto").equals("https")) {
-                    return tunnel.getString("public_url");
-                }
-            }
-        } catch (IOException e) {
-            // ignora erro se ngrok não estiver ativo
-        }
-        return null;
     }
 }
