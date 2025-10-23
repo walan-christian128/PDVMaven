@@ -31,6 +31,8 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon"
+	href="img/2992664_cart_dollar_mobile_shopping_smartphone_icon.png">
     <title>Status do Pagamento</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -114,7 +116,7 @@
         .status-rejected { border-left: 5px solid var(--rejected-color); }
     </style>
 </head>
-<body class="<%= "status-" + statusDaVenda.toLowerCase() %>">
+<body class="<%= "status-" + statusDaVenda.toLowerCase() %>"style="background-image: url('img/Gemini_Generated_Image_97a36f97a36f97a3.jpg'); background-size: auto auto; background-position: center; margin: 0; padding: 0; height: 100vh; width: 100vw;">
     <div class="container">
         <% if ("approved".equalsIgnoreCase(statusDaVenda)) { %>
             <div class="status-icon icon-approved">&#10003;</div>

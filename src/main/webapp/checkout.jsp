@@ -39,6 +39,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <link rel="icon"
+	href="img/2992664_cart_dollar_mobile_shopping_smartphone_icon.png">
     <title>Finalizar Compra</title>
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -428,7 +430,7 @@
         }
     </style>
 </head>
-<body>
+<body style="background-image: url('img/Gemini_Generated_Image_97a36f97a36f97a3.jpg'); background-size: auto auto; background-position: center; margin: 0; padding: 0; height: 100vh; width: 100vw;">
     <div class="container" id="mainContainer">
         <header>
             <h1>Finalizar Compra</h1>
