@@ -70,7 +70,7 @@ import net.sf.jasperreports.engine.util.JRLoader;
  */
 // 💡 Nome do servlet ajustado para VendasServlet
 @WebServlet(urlPatterns = { "/selecionarClienteProdutos", "/inserirItens", "/InseirVendaEintens", "/PeriodoVenda",
-		"/dia", "/maisVendidos","/exibirRelatorio","/lucroVenda" ,"/lucroPeriodo","/desconto","/relVenda"})
+		"/dia", "/maisVendidos","/exibirRelatorio","/lucroVenda" ,"/lucroPeriodo","/desconto","/relVenda","/exibirRelatorio2"})
 @MultipartConfig
 public class VendasServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
@@ -104,6 +104,16 @@ public class VendasServlet extends HttpServlet {
 
 		String action = request.getServletPath();
 		switch (action) {
+		case "/exibirRelatorio2":
+			try {
+				// 💡 Ação original para a última venda (reutilizando a lógica)
+				VendasDAO vendasDAO = new VendasDAO(empresa);
+				int cdVenda = vendasDAO.retornaUltimaVenda();
+				executarGeracaoRelatorio(request, response, cdVenda);
+			} catch (Exception e) { // Captura todas as exceptions que o novo método pode lançar
+				e.printStackTrace();
+			}
+			break;
 		case "/selecionarClienteProdutos":
 			try {
 				selecionarClienteProd(request, response);
@@ -226,6 +236,68 @@ public class VendasServlet extends HttpServlet {
 			// Handle exception appropriately
 		}
 	}
+	// 💡 Novo método auxiliar para gerar o relatório com base no ID da venda.
+		private void executarGeracaoRelatorio(HttpServletRequest request, HttpServletResponse response, int cdVenda)
+				throws ServletException, IOException, NamingException, ClassNotFoundException {
+
+			HttpSession session = request.getSession();
+			String empresa = (String) session.getAttribute("empresa");
+
+			if (empresa == null) {
+				response.getWriter().write("Empresa não fornecida.");
+				LOGGER.log(Level.WARNING, "Empresa não fornecida.");
+				return;
+			}
+
+			// A conexão será automaticamente fechada (AutoCloseable)
+			try (Connection connection = new ConectionFactory().getConnection(empresa)) {
+
+				String jasperPath = "RelatorioJasper/novoComprovante.jasper";
+				// Usamos o getResourceAsStream para garantir que funcione em diferentes ambientes
+				InputStream jasperStream = getClass().getClassLoader().getResourceAsStream(jasperPath);
+
+				if (jasperStream == null) {
+					response.getWriter()
+							.write("Arquivo JASPER não encontrado: " + jasperPath + ". Verifique se está em src/main/resources/");
+					LOGGER.log(Level.SEVERE, "Arquivo JASPER não encontrado: {0}", jasperPath);
+					return;
+				}
+
+				// Carregando o relatório
+				JasperReport jasperReport = (JasperReport) JRLoader.loadObject(jasperStream);
+
+				Map<String, Object> parametros = new HashMap<>();
+				UsuarioDAO usuarioDAO = new UsuarioDAO(empresa);
+
+				// Aqui é importante garantir que o ID da empresa seja recuperado corretamente
+				Empresa empresaObj = usuarioDAO.retornCompany(new Empresa(), empresa, 0);
+				// Usando o valor fixo '1' como fallback, conforme seu requisito (mas idealmente
+				// deve ser dinâmico)
+				int cdEmpresa = 1; // (empresaObj != null) ? empresaObj.getId() : 1; 
+
+				parametros.put("cdEmpresa", cdEmpresa);
+				parametros.put("cdVenda", cdVenda); // Usando o ID da venda recém-criada
+
+				JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, parametros, connection);
+				ByteArrayOutputStream pdfOutputStream = new ByteArrayOutputStream();
+				JasperExportManager.exportReportToPdfStream(jasperPrint, pdfOutputStream);
+				byte[] pdfBytes = pdfOutputStream.toByteArray();
+
+				response.setContentType("application/pdf");
+				// 💡 Usando 'attachment' para que o navegador baixe ou abra em uma nova aba,
+				// mas 'inline' abre na mesma. Mantendo 'inline' para abrir na tela.
+				response.setHeader("Content-Disposition", "inline; filename=relatorio_venda_" + cdVenda + ".pdf");
+				response.setContentLength(pdfBytes.length);
+
+				try (OutputStream outStream = response.getOutputStream()) {
+					outStream.write(pdfBytes);
+					outStream.flush();
+				}
+			} catch (SQLException | JRException e) {
+				LOGGER.log(Level.SEVERE, "Erro ao gerar relatório para a empresa: " + empresa, e);
+				response.getWriter().write("Erro ao gerar relatório: " + e.getMessage());
+			}
+		}
 
 	@SuppressWarnings({ "unused"})
 	protected void gerarRelatorio(HttpServletRequest request, HttpServletResponse response)
@@ -236,21 +308,30 @@ public class VendasServlet extends HttpServlet {
 
 	    if (empresa == null) {
 	        response.getWriter().write("Empresa não fornecida.");
-	        LOGGER.log(Level.WARNING, "Empresa não fornecida.");
+	        // LOGGER.log(Level.WARNING, "Empresa não fornecida."); // Mantenha seu log aqui
 	        return;
 	    }
 
+	    // A conexão será automaticamente fechada (AutoCloseable)
 	    try (Connection connection = new ConectionFactory().getConnection(empresa)) {
-	        Thread.sleep(1000);
+	        
+	        // Removido: Thread.sleep(1000); - O Jasper não requer delay.
+	        
 	        String jasperPath = "RelatorioJasper/novoComprovante.jasper";
+	        // Caminho de carregamento é PERFEITO para ambiente Maven
 	        InputStream jasperStream = getClass().getClassLoader().getResourceAsStream(jasperPath);
 	        
 	        if (jasperStream == null) {
-	            response.getWriter().write("Arquivo JASPER não encontrado: " + jasperPath);
-	            LOGGER.log(Level.SEVERE, "Arquivo JASPER não encontrado: {0}", jasperPath);
+	            response.getWriter().write("Arquivo JASPER não encontrado: " + jasperPath + ". Verifique se está em src/main/resources/");
+	            // LOGGER.log(Level.SEVERE, "Arquivo JASPER não encontrado: {0}", jasperPath); // Mantenha seu log aqui
 	            return;
 	        }
+
+	        // --- Ponto Crítico de Incompatibilidade ---
+	        // A falha ocorre ao carregar este objeto, devido à versão.
 	        JasperReport jasperReport = (JasperReport) JRLoader.loadObject(jasperStream);
+	        
+	        // O restante do código está ótimo e funcional
 	        Map<String, Object> parametros = new HashMap<>();
 	        UsuarioDAO usuarioDAO = new UsuarioDAO(empresa);
 	        VendasDAO vendasDAO = new VendasDAO(empresa);
@@ -261,10 +342,12 @@ public class VendasServlet extends HttpServlet {
 	        
 	        parametros.put("cdEmpresa", cdEmpresa);
 	        parametros.put("cdVenda", cdVenda);
+	        
 	        JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, parametros, connection);
 	        ByteArrayOutputStream pdfOutputStream = new ByteArrayOutputStream();
 	        JasperExportManager.exportReportToPdfStream(jasperPrint, pdfOutputStream);
 	        byte[] pdfBytes = pdfOutputStream.toByteArray();
+	        
 	        response.setContentType("application/pdf");
 	        response.setHeader("Content-Disposition", "inline; filename=relatorio_venda.pdf");
 	        response.setContentLength(pdfBytes.length);
@@ -273,12 +356,11 @@ public class VendasServlet extends HttpServlet {
 	            outStream.write(pdfBytes);
 	            outStream.flush();
 	        }
-	    } catch (SQLException | JRException | NamingException | InterruptedException e) {
-	        LOGGER.log(Level.SEVERE, "Erro ao gerar relatório para a empresa: " + empresa, e);
+	    } catch (SQLException | JRException | NamingException e) {
+	        // LOGGER.log(Level.SEVERE, "Erro ao gerar relatório para a empresa: " + empresa, e); // Mantenha seu log aqui
 	        response.getWriter().write("Erro ao gerar relatório: " + e.getMessage());
 	    }
 	}
-	
 	protected void relVenda(HttpServletRequest request, HttpServletResponse response)
 	        throws ServletException, IOException, ClassNotFoundException, NamingException {
 
@@ -418,188 +500,205 @@ public class VendasServlet extends HttpServlet {
 		}
 	}
 
-    private void inserirVendas(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+	private void inserirVendas(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
 
-        HttpSession session = request.getSession();
-        
-        try {
-            String empresaBase = (String) session.getAttribute("empresa");
-            if (empresaBase == null || empresaBase.isEmpty()) {
-                System.err.println("Erro: Nome da base da empresa não definido na sessão.");
-                response.sendRedirect("erroPagamento.jsp?msg=empresa-base-nao-definida");
-                return;
-            }
+		HttpSession session = request.getSession();
 
-            String empresaNome = request.getParameter("empresaNome");
-            if (empresaNome == null || empresaNome.isEmpty()) {
-                empresaNome = empresaBase;
-            }
+		try {
+			String empresaBase = (String) session.getAttribute("empresa");
+			if (empresaBase == null || empresaBase.isEmpty()) {
+				System.err.println("Erro: Nome da base da empresa não definido na sessão.");
+				response.sendRedirect("erroPagamento.jsp?msg=empresa-base-nao-definida");
+				return;
+			}
 
-            EmpresaDAO empresaDao = new EmpresaDAO(empresaBase);
-            // 💡 Lembrete: O ID da empresa precisa ser dinâmico para cada empresa
-            Integer empresaId = 1; 
-            if (empresaId == null || empresaId == 0) {
-                 System.err.println("Erro: ID da empresa não encontrado para " + empresaNome);
-                 response.sendRedirect("erroPagamento.jsp?msg=empresa-id-nao-encontrado");
-                 return;
-            }
-            session.setAttribute("empresaId", empresaId);
+			String empresaNome = request.getParameter("empresaNome");
+			if (empresaNome == null || empresaNome.isEmpty()) {
+				empresaNome = empresaBase;
+			}
 
-            Integer usuarioID = (Integer) session.getAttribute("usuarioID");
+			// 💡 Simplificando: Assumindo ID fixo 1 conforme seu requisito
+			Integer empresaId = 1;
+			session.setAttribute("empresaId", empresaId);
 
-            String idCliStr = request.getParameter("cliId");
-            String totalVendaStr = request.getParameter("iserirtotal");
-            String descontoStr = request.getParameter("desconto");
-            String formaPagamento = request.getParameter("formaPagamento");
+			Integer usuarioID = (Integer) session.getAttribute("usuarioID");
 
-            int idCli = (idCliStr != null && !idCliStr.isEmpty()) ? Integer.parseInt(idCliStr) : 0;
-            double totalVenda = (totalVendaStr != null && !totalVendaStr.isEmpty()) ? Double.parseDouble(totalVendaStr) : 0.0;
-            double desconto = (descontoStr != null && !descontoStr.isEmpty()) ? Double.parseDouble(descontoStr) : 0.0;
+			String idCliStr = request.getParameter("cliId");
+			String totalVendaStr = request.getParameter("iserirtotal");
+			String descontoStr = request.getParameter("desconto");
+			String formaPagamento = request.getParameter("formaPagamento");
 
-            Vendas obj = new Vendas();
-            if (idCli > 0) {
-                Clientes objCli = new Clientes();
-                objCli.setId(idCli);
-                obj.setCliente(objCli);
-            }
-            obj.setData_venda(request.getParameter("data"));
-            obj.setTotal_venda(totalVenda);
-            obj.setObs(request.getParameter("observacao"));
-            obj.setDesconto(desconto);
-            obj.setFormaPagamento(formaPagamento);
+			int idCli = (idCliStr != null && !idCliStr.isEmpty()) ? Integer.parseInt(idCliStr) : 0;
+			double totalVenda = (totalVendaStr != null && !totalVendaStr.isEmpty()) ? Double.parseDouble(totalVendaStr)
+					: 0.0;
+			double desconto = (descontoStr != null && !descontoStr.isEmpty()) ? Double.parseDouble(descontoStr) : 0.0;
 
-            if (usuarioID != null && usuarioID > 0) {
-                Usuario objUser = new Usuario();
-                objUser.setId(usuarioID);
-                obj.setUsuario(objUser);
-            }
+			Vendas obj = new Vendas();
+			if (idCli > 0) {
+				Clientes objCli = new Clientes();
+				objCli.setId(idCli);
+				obj.setCliente(objCli);
+			}
+			obj.setData_venda(request.getParameter("data"));
+			obj.setTotal_venda(totalVenda);
+			obj.setObs(request.getParameter("observacao"));
+			obj.setDesconto(desconto);
+			obj.setFormaPagamento(formaPagamento);
 
-            VendasDAO dao = new VendasDAO(empresaBase);
-            dao.cadastrarVenda(obj);
-            obj.setId(dao.retornaUltimaVenda());
+			if (usuarioID != null && usuarioID > 0) {
+				Usuario objUser = new Usuario();
+				objUser.setId(usuarioID);
+				obj.setUsuario(objUser);
+			}
 
-            JSONArray itensArray = (JSONArray) session.getAttribute("itens");
-            if (itensArray != null && itensArray.length() > 0) {
-                for (int i = 0; i < itensArray.length(); i++) {
-                    JSONObject linha = itensArray.getJSONObject(i);
+			VendasDAO dao = new VendasDAO(empresaBase);
+			// 1. Cadastra a Venda
+			dao.cadastrarVenda(obj);
+			obj.setId(dao.retornaUltimaVenda()); // Obtém o ID da venda recém-criada
 
-                    int idProdVenda = Integer.parseInt(linha.getString("idProd"));
-                    int qtdProd = Integer.parseInt(linha.getString("qtdProd"));
-                    double subItens = Double.parseDouble(linha.getString("subtotal"));
+			// 2. Insere os Itens da Venda e Baixa o Estoque
+			JSONArray itensArray = (JSONArray) session.getAttribute("itens");
+			if (itensArray != null && itensArray.length() > 0) {
+				for (int i = 0; i < itensArray.length(); i++) {
+					JSONObject linha = itensArray.getJSONObject(i);
 
-                    ProdutosDAO dao_produto = new ProdutosDAO(empresaBase);
-                    itensVendaDAO daoitem = new itensVendaDAO(empresaBase);
+					int idProdVenda = Integer.parseInt(linha.getString("idProd"));
+					int qtdProd = Integer.parseInt(linha.getString("qtdProd"));
+					double subItens = Double.parseDouble(linha.getString("subtotal"));
 
-                    Produtos objp = new Produtos();
-                    ItensVenda itens = new ItensVenda();
+					ProdutosDAO dao_produto = new ProdutosDAO(empresaBase);
+					itensVendaDAO daoitem = new itensVendaDAO(empresaBase);
 
-                    itens.setVenda(obj);
-                    objp.setId(idProdVenda);
-                    itens.setProduto(objp);
-                    itens.setQtd(qtdProd);
-                    itens.setSubtotal(subItens);
+					Produtos objp = new Produtos();
+					ItensVenda itens = new ItensVenda();
 
-                    int qtd_estoque = dao_produto.retornaEstoqueAtual(objp.getId());
-                    dao_produto.baixarEstoque(objp.getId(), qtd_estoque - qtdProd);
+					itens.setVenda(obj);
+					objp.setId(idProdVenda);
+					itens.setProduto(objp);
+					itens.setQtd(qtdProd);
+					itens.setSubtotal(subItens);
 
-                    daoitem.cadastraItem(itens);
-                }
-                session.removeAttribute("itens");
-                session.removeAttribute("desconto");
-                session.removeAttribute("totalVenda");
-                session.removeAttribute("totalVendaAtualizado");
-            }
+					int qtd_estoque = dao_produto.retornaEstoqueAtual(objp.getId());
+					dao_produto.baixarEstoque(objp.getId(), qtd_estoque - qtdProd);
 
-            // 🔹 Integração Mercado Pago
-            if ("MERCADOPAGO".equalsIgnoreCase(formaPagamento)) {
-                ConfigPagamentoDAO cfgDao = new ConfigPagamentoDAO(empresaBase);
-                ConfigPagamento cfg = cfgDao.buscarPorEmpresa(empresaId);
+					daoitem.cadastraItem(itens);
+				}
+				session.removeAttribute("itens");
+				session.removeAttribute("desconto");
+				session.removeAttribute("totalVenda");
+				session.removeAttribute("totalVendaAtualizado");
+			}
 
-                if (cfg == null || cfg.getAccessToken() == null || cfg.getAccessToken().isEmpty()) {
-                    System.err.println("Erro: Configuração de pagamento inválida para empresaId " + empresaId);
-                    response.sendRedirect("erroPagamento.jsp?msg=access-token-invalido");
-                    return;
-                }
+			// 3. 🚦 Lógica de Pagamento / Relatório
+			if ("MERCADOPAGO".equalsIgnoreCase(formaPagamento)) {
+				// 🔹 INTEGRAÇÃO MERCADO PAGO - O fluxo segue para o checkout
+				ConfigPagamentoDAO cfgDao = new ConfigPagamentoDAO(empresaBase);
+				ConfigPagamento cfg = cfgDao.buscarPorEmpresa(empresaId);
 
-                try {
-                    MercadoPagoConfig.setAccessToken(cfg.getAccessToken());
-                    PreferenceClient client = new PreferenceClient();
+				if (cfg == null || cfg.getAccessToken() == null || cfg.getAccessToken().isEmpty()) {
+					System.err.println("Erro: Configuração de pagamento inválida para empresaId " + empresaId);
+					response.sendRedirect("erroPagamento.jsp?msg=access-token-invalido");
+					return;
+				}
 
-                    String externalReference = empresaBase + "_" + obj.getId();
+				try {
+					MercadoPagoConfig.setAccessToken(cfg.getAccessToken());
+					PreferenceClient client = new PreferenceClient();
 
-                    PreferenceItemRequest itemRequest = PreferenceItemRequest.builder()
-                            .title("Venda #" + obj.getId())
-                            .quantity(1)
-                            .unitPrice(new BigDecimal(obj.getTotal_venda()))
-                            .currencyId("BRL")
-                            .build();
+					String externalReference = empresaBase + "_" + obj.getId();
 
-                    // ✅ CORREÇÃO: Pega a URL do Ngrok dinamicamente
-                    String ngrokBaseUrl = getNgrokTunnelUrl();
-                    if (ngrokBaseUrl == null) {
-                        System.err.println("Erro: Não foi possível obter a URL do Ngrok. Verifique se o Ngrok está rodando.");
-                        response.sendRedirect("erroPagamento.jsp?msg=ngrok-nao-online");
-                        return;
-                    }
-                    
-                    System.out.println("URL de notificação a ser enviada para o Mercado Pago: " + ngrokBaseUrl + "/PDVVenda/mercadopago-webhook");
+					PreferenceItemRequest itemRequest = PreferenceItemRequest.builder()
+							.title("Venda #" + obj.getId())
+							.quantity(1)
+							.unitPrice(new BigDecimal(obj.getTotal_venda()))
+							.currencyId("BRL")
+							.build();
 
-                    PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
-                            .success(ngrokBaseUrl + "/PDVVenda/pagamento-sucesso")
-                            .failure(ngrokBaseUrl + "/PDVVenda/pagamento-falhou")
-                            .pending(ngrokBaseUrl + "/PDVVenda/pagamento-pendente")
-                            .build();
+					// Obtém URL do Ngrok (necessário para BackUrls e NotificationUrl)
+					String ngrokBaseUrl = getNgrokTunnelUrl();
+					if (ngrokBaseUrl == null) {
+						System.err.println("Erro: Não foi possível obter a URL do Ngrok. Verifique se o Ngrok está rodando.");
+						response.sendRedirect("erroPagamento.jsp?msg=ngrok-nao-online");
+						return;
+					}
 
-                    PreferencePayerRequest payer = PreferencePayerRequest.builder()
-                            .name(request.getParameter("nomeCliente"))
-                            .email(request.getParameter("emailCliente"))
-                            .build();
+					System.out.println("URL de notificação a ser enviada para o Mercado Pago: " + ngrokBaseUrl + "/PDVVenda/mercadopago-webhook");
 
-                    PreferenceRequest prefRequest = PreferenceRequest.builder()
-                            .items(Collections.singletonList(itemRequest))
-                            .externalReference(externalReference)
-                            .backUrls(backUrls)
-                            .payer(payer)
-                            .autoReturn("approved")
-                            .notificationUrl(ngrokBaseUrl + "/PDVVenda/mercadopago-webhook")
-                            .build();
+					PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
+							.success(ngrokBaseUrl + "/PDVVenda/pagamento-sucesso")
+							.failure(ngrokBaseUrl + "/PDVVenda/pagamento-falhou")
+							.pending(ngrokBaseUrl + "/PDVVenda/pagamento-pendente")
+							.build();
 
-                    Preference pref = client.create(prefRequest);
+					PreferencePayerRequest payer = PreferencePayerRequest.builder()
+							.name(request.getParameter("nomeCliente"))
+							.email(request.getParameter("emailCliente"))
+							.build();
 
-                    request.setAttribute("preferenceId", pref.getId());
-                    request.setAttribute("publicKey", cfg.getPublicKey());
-                    request.setAttribute("initPoint", pref.getInitPoint());
-                    request.setAttribute("totalVenda", obj.getTotal_venda());
-                    request.setAttribute("nomeCliente", request.getParameter("nomeCliente"));
-                    request.setAttribute("emailCliente", request.getParameter("emailCliente"));
-                    request.getRequestDispatcher("checkout.jsp").forward(request, response);
+					PreferenceRequest prefRequest = PreferenceRequest.builder()
+							.items(Collections.singletonList(itemRequest))
+							.externalReference(externalReference)
+							.backUrls(backUrls)
+							.payer(payer)
+							.autoReturn("approved")
+							.notificationUrl(ngrokBaseUrl + "/PDVVenda/mercadopago-webhook")
+							.build();
 
-                    return;
+					Preference pref = client.create(prefRequest);
 
-                } catch (MPApiException e) {
-                    System.err.println("Erro na API do Mercado Pago: " + e.getApiResponse().getContent());
-                    response.sendRedirect("erroPagamento.jsp?msg=erro-api-mp");
-                    return;
-                } catch (Exception e) {
-                    System.err.println("Erro na integração com Mercado Pago:");
-                    e.printStackTrace();
-                    response.sendRedirect("erroPagamento.jsp?msg=erro-geral-mp");
-                    return;
-                }
-            }
+					request.setAttribute("preferenceId", pref.getId());
+					request.setAttribute("publicKey", cfg.getPublicKey());
+					request.setAttribute("initPoint", pref.getInitPoint());
+					request.setAttribute("totalVenda", obj.getTotal_venda());
+					request.setAttribute("nomeCliente", request.getParameter("nomeCliente"));
+					request.setAttribute("emailCliente", request.getParameter("emailCliente"));
 
-            response.sendRedirect("realizarVendas.jsp");
-        } catch (NumberFormatException e) {
-            System.err.println("Erro de conversão de número. Verifique os parâmetros.");
-            e.printStackTrace();
-            response.sendRedirect("erroPagamento.jsp?msg=formato-numero-invalido");
-        } catch (Exception e) {
-            System.err.println("Erro geral no processo de vendas.");
-            e.printStackTrace();
-            response.sendRedirect("erroPagamento.jsp?msg=erro-geral");
-        }
-    }
+					// Redireciona para o checkout do MP. O relatório NÃO é gerado agora.
+					request.getRequestDispatcher("checkout.jsp").forward(request, response);
+
+					return;
+
+				} catch (MPApiException e) {
+					System.err.println("Erro na API do Mercado Pago: " + e.getApiResponse().getContent());
+					response.sendRedirect("erroPagamento.jsp?msg=erro-api-mp");
+					return;
+				} catch (Exception e) {
+					System.err.println("Erro na integração com Mercado Pago:");
+					e.printStackTrace();
+					response.sendRedirect("erroPagamento.jsp?msg=erro-geral-mp");
+					return;
+				}
+			} else {
+				// 🔹 OUTRAS FORMAS DE PAGAMENTO - Gera o relatório e exibe imediatamente
+				try {
+					// 💡 CHAMA O NOVO MÉTODO
+					executarGeracaoRelatorio(request, response, obj.getId());
+					// Não precisa de forward/redirect, pois a resposta é o PDF
+					return;
+				} catch (NamingException e) {
+					System.err.println("Erro de Naming ao gerar relatório:");
+					e.printStackTrace();
+					response.getWriter().write("Erro ao gerar relatório (Naming): " + e.getMessage());
+					return;
+				}
+			}
+
+			// Se houver algum erro ou se o fluxo cair aqui sem gerar o PDF (o que não
+			// deveria acontecer no ELSE), redireciona.
+			// response.sendRedirect("realizarVendas.jsp"); // Comentei para evitar que a
+			// resposta seja duplicada após a geração do PDF.
+
+		} catch (NumberFormatException e) {
+			System.err.println("Erro de conversão de número. Verifique os parâmetros.");
+			e.printStackTrace();
+			response.sendRedirect("erroPagamento.jsp?msg=formato-numero-invalido");
+		} catch (Exception e) {
+			System.err.println("Erro geral no processo de vendas.");
+			e.printStackTrace();
+			response.sendRedirect("erroPagamento.jsp?msg=erro-geral");
+		}
+	}
 
     private String getNgrokTunnelUrl() {
         try {

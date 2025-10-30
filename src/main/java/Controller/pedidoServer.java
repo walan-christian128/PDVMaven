@@ -20,12 +20,16 @@ import net.sf.jasperreports.engine.JasperPrint;
 import net.sf.jasperreports.engine.JasperReport;
 import net.sf.jasperreports.engine.util.JRLoader;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.math.BigDecimal;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.net.URLEncoder;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -911,74 +915,85 @@ public class pedidoServer extends HttpServlet {
 	        session.removeAttribute("carrinho");
 	        session.removeAttribute("itens");
 	          // 🔹 Integração Mercado Pago
-	        if ("MERCADOPAGOPAY".equalsIgnoreCase(formaPagamento)) {
-                ConfigPagamentoDAO cfgDao = new ConfigPagamentoDAO(empresa);
-                ConfigPagamento cfg = cfgDao.buscarPorEmpresa(empresaId);
+	    	if ("MERCADOPAGOPAY".equalsIgnoreCase(formaPagamento)) {
+				// 🔹 INTEGRAÇÃO MERCADO PAGO - O fluxo segue para o checkout
+				ConfigPagamentoDAO cfgDao = new ConfigPagamentoDAO(empresa);
+				ConfigPagamento cfg = cfgDao.buscarPorEmpresa(empresaId);
 
-                if (cfg == null || cfg.getAccessToken() == null || cfg.getAccessToken().isEmpty()) {
-                    System.err.println("Erro: Configuração de pagamento inválida para empresaId " + empresaId);
-                    response.sendRedirect("erroPagamento.jsp?msg=access-token-invalido");
-                    return;
-                }
+				if (cfg == null || cfg.getAccessToken() == null || cfg.getAccessToken().isEmpty()) {
+					System.err.println("Erro: Configuração de pagamento inválida para empresaId " + empresaId);
+					response.sendRedirect("erroPagamento.jsp?msg=access-token-invalido");
+					return;
+				}
 
-                try {
-                    MercadoPagoConfig.setAccessToken(cfg.getAccessToken());
-                    PreferenceClient client = new PreferenceClient();
+				try {
+					MercadoPagoConfig.setAccessToken(cfg.getAccessToken());
+					PreferenceClient client = new PreferenceClient();
 
-                    // 🔹 Monta o external_reference no formato empresa_vendaId
-                    String externalReference = empresa + "_" + novoPedido.getIdPedido(); // ex: "distribuidora_762"
+					String externalReference = empresa + "_" + novoPedido.getIdPedido();
 
-                    PreferenceItemRequest itemRequest = PreferenceItemRequest.builder()
-                            .title("Venda #" + novoPedido.getIdPedido()) 
-                            .quantity(1)
-                            .unitPrice(new BigDecimal(novoPedido.getTotalPedido()))
-                            .currencyId("BRL")
-                            .build();
+					PreferenceItemRequest itemRequest = PreferenceItemRequest.builder()
+							.title("Pedido #" + novoPedido.getIdPedido())
+							.quantity(1)
+							.unitPrice(new BigDecimal(novoPedido.getTotalPedido()))
+							.currencyId("BRL")
+							.build();
 
-                    PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
-                            .success("https://a1b2c3d4.ngrok.io/PDVVenda/pagamento-sucesso")
-                            .failure("https://a1b2c3d4.ngrok.io/PDVVenda/pagamento-falhou")
-                            .pending("https://a1b2c3d4.ngrok.io/PDVVenda/pagamento-pendente")
-                            .build();
+					// Obtém URL do Ngrok (necessário para BackUrls e NotificationUrl)
+					String ngrokBaseUrl = getNgrokTunnelUrl();
+					if (ngrokBaseUrl == null) {
+						System.err.println("Erro: Não foi possível obter a URL do Ngrok. Verifique se o Ngrok está rodando.");
+						response.sendRedirect("erroPagamento.jsp?msg=ngrok-nao-online");
+						return;
+					}
 
-                    PreferencePayerRequest payer = PreferencePayerRequest.builder()
-                            .name(request.getParameter("nomeCliente"))
-                            .email(request.getParameter("emailCliente"))
-                            .build();
+					System.out.println("URL de notificação a ser enviada para o Mercado Pago: " + ngrokBaseUrl + "/PDVVenda/mercadopago-webhook");
 
-                    PreferenceRequest prefRequest = PreferenceRequest.builder()
-                            .items(Collections.singletonList(itemRequest))
-                            .externalReference(externalReference) // ✅ agora no formato correto
-                            .backUrls(backUrls)
-                            .payer(payer)
-                            .autoReturn("approved")
-                            .notificationUrl("https://54b29dc6af2d.ngrok-free.app/PDVVenda/mercadopago-webhook")
-                            .build();
+					PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
+							.success(ngrokBaseUrl + "/PDVVenda/pagamento-sucesso")
+							.failure(ngrokBaseUrl + "/PDVVenda/pagamento-falhou")
+							.pending(ngrokBaseUrl + "/PDVVenda/pagamento-pendente")
+							.build();
 
-                    Preference pref = client.create(prefRequest);
+					PreferencePayerRequest payer = PreferencePayerRequest.builder()
+							.name(request.getParameter("nomeCliente"))
+							.email(request.getParameter("emailCliente"))
+							.build();
 
-                    // 🔹 Envia dados para o checkout.jsp
-                    request.setAttribute("preferenceId", pref.getId());
-                    request.setAttribute("publicKey", cfg.getPublicKey()); 
-                    request.setAttribute("initPoint", pref.getInitPoint());
-                    request.setAttribute("totalVenda", novoPedido.getTotalPedido());
-                    request.setAttribute("nomeCliente", request.getParameter("nomeCliente"));
-                    request.setAttribute("emailCliente", request.getParameter("emailCliente"));
-                    request.getRequestDispatcher("checkout.jsp").forward(request, response);
+					PreferenceRequest prefRequest = PreferenceRequest.builder()
+							.items(Collections.singletonList(itemRequest))
+							.externalReference(externalReference)
+							.backUrls(backUrls)
+							.payer(payer)
+							.autoReturn("approved")
+							.notificationUrl(ngrokBaseUrl + "/PDVVenda/mercadopago-webhook")
+							.build();
 
-                    return;
+					Preference pref = client.create(prefRequest);
 
-                } catch (MPApiException e) {
-                    System.err.println("Erro na API do Mercado Pago: " + e.getApiResponse().getContent());
-                    response.sendRedirect("erroPagamento.jsp?msg=erro-api-mp");
-                    return;
-                } catch (Exception e) {
-                    System.err.println("Erro na integração com Mercado Pago:");
-                    e.printStackTrace();
-                    response.sendRedirect("erroPagamento.jsp?msg=erro-geral-mp");
-                    return;
-                }
-            }
+					request.setAttribute("preferenceId", pref.getId());
+					request.setAttribute("publicKey", cfg.getPublicKey());
+					request.setAttribute("initPoint", pref.getInitPoint());
+					request.setAttribute("totalVenda", novoPedido.getTotalPedido());
+					request.setAttribute("nomeCliente", request.getParameter("nomeCliente"));
+					request.setAttribute("emailCliente", request.getParameter("emailCliente"));
+
+					// Redireciona para o checkout do MP. O relatório NÃO é gerado agora.
+					request.getRequestDispatcher("checkout.jsp").forward(request, response);
+
+					return;
+
+				} catch (MPApiException e) {
+					System.err.println("Erro na API do Mercado Pago: " + e.getApiResponse().getContent());
+					response.sendRedirect("erroPagamento.jsp?msg=erro-api-mp");
+					return;
+				} catch (Exception e) {
+					System.err.println("Erro na integração com Mercado Pago:");
+					e.printStackTrace();
+					response.sendRedirect("erroPagamento.jsp?msg=erro-geral-mp");
+					return;
+				}
+			} 
 
 
 	        response.sendRedirect(request.getContextPath() + "/ProdutosPedidos.jsp?abrirModalPedidos=true&mensagem=" +
@@ -990,6 +1005,42 @@ public class pedidoServer extends HttpServlet {
 	                URLEncoder.encode("Erro ao processar o pedido: " + e.getMessage(), "UTF-8"));
 	    }
 	}
+    private String getNgrokTunnelUrl() {
+        try {
+            URL url = new URL("http://127.0.0.1:4040/api/tunnels");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(5000); 
+            conn.setReadTimeout(5000);
+
+            if (conn.getResponseCode() != 200) {
+                System.err.println("Erro ao conectar na API do Ngrok: " + conn.getResponseCode());
+                return null;
+            }
+
+            BufferedReader br = new BufferedReader(new InputStreamReader((conn.getInputStream())));
+            String output;
+            StringBuilder response = new StringBuilder();
+            while ((output = br.readLine()) != null) {
+                response.append(output);
+            }
+            conn.disconnect();
+
+            JSONObject json = new JSONObject(response.toString());
+            JSONArray tunnels = json.getJSONArray("tunnels");
+
+            for (int i = 0; i < tunnels.length(); i++) {
+                JSONObject tunnel = tunnels.getJSONObject(i);
+                if (tunnel.getString("proto").equals("https")) {
+                    return tunnel.getString("public_url");
+                }
+            }
+
+        } catch (IOException e) {
+            System.err.println("Erro de I/O ao tentar conectar na API do Ngrok: " + e.getMessage());
+        }
+        return null;
+    }
 
 	// ✅ Função auxiliar para converter valores monetários do formato BR para Java
 	private double parseValorMonetarioBR(String valor) {

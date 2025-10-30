@@ -139,10 +139,10 @@
                         <label for="emailCliente" class="form-label">E-mail:</label>
                         <input type="email" class="form-control" id="emailCliente" name="emailCliente" required
                                value="<%= clienteModal != null ? clienteModal.getEmail() : "" %>">
-                        <div class="invalid-feedback">Por favor, insira um e-mail v�lido.</div>
+                        <div class="invalid-feedback">Por favor, insira um e-mail válido.</div>
                     </div>
 
-                    <h5 class="text-secondary mt-4 mb-3">Endere�o</h5>
+                    <h5 class="text-secondary mt-4 mb-3">Endereço</h5>
                     <div class="row">
                         <div class="col-md-9 mb-3">
                             <label for="ruaCliente" class="form-label">Rua:</label>
@@ -150,9 +150,14 @@
                                    value="<%= clienteModal != null ? clienteModal.getEndereco() : "" %>">
                         </div>
                         <div class="col-md-3 mb-3">
-                            <label for="numeroCliente" class="form-label">N�mero:</label>
+                            <label for="numeroCliente" class="form-label">Número:</label>
                             <input type="text" class="form-control" id="numeroCliente" name="numeroCliente"
                                    value="<%= clienteModal != null ? clienteModal.getNumero() : "" %>">
+                        </div>
+                             <div class="col-md-3 mb-3">
+                            <label for="cepPedido" class="form-label">Cep:</label>
+                            <input type="text" class="form-control" id="cepPedido" name="cepPedido"
+                                   value="<%= clienteModal != null ? clienteModal.getCep() : "" %>">
                         </div>
                     </div>
                     <div class="row">
@@ -173,98 +178,98 @@
 						name="estadoCliente" class="form-select" id="estadoCliente">
 						<option value="">Selecione o Estado</option>
 						<option value="AC"
-							<%if ("AC".equals(request.getAttribute("estadoCliente")))
+							<%if ("AC".equals(clienteModal != null ? clienteModal.getUf() : ""))
 	out.print("selected");%>>Acre</option>
 						<option value="AL"
-							<%if ("AL".equals(request.getAttribute("estadoCliente")))
+							<%if ("AL".equals(clienteModal != null ? clienteModal.getUf() : ""))
 	out.print("selected");%>>Alagoas</option>
 						<option value="AP"
-							<%if ("AP".equals(request.getAttribute("estadoCliente")))
-	out.print("selected");%>>Amap�</option>
+							<%if ("AP".equals(clienteModal != null ? clienteModal.getUf() : ""))
+	out.print("selected");%>>Amapá</option>
 						<option value="AM"
-							<%if ("AM".equals(request.getAttribute("estadoCliente")))
+							<%if ("AM".equals(clienteModal != null ? clienteModal.getUf() : ""))
 	out.print("selected");%>>Amazonas</option>
 						<option value="BA"
-							<%if ("BA".equals(request.getAttribute("estadoCliente")))
+							<%if ("BA".equals(clienteModal != null ? clienteModal.getUf() : ""))
 	out.print("selected");%>>Bahia</option>
 						<option value="CE"
-							<%if ("CE".equals(request.getAttribute("estadoCliente")))
-	out.print("selected");%>>Cear�</option>
+							<%if ("CE".equals(clienteModal != null ? clienteModal.getUf() : ""))
+	out.print("selected");%>>Ceará</option>
 						<option value="DF"
-							<%if ("DF".equals(request.getAttribute("estadoCliente")))
+							<%if ("DF".equals(clienteModal != null ? clienteModal.getUf() : ""))
 	out.print("selected");%>>Distrito
 							Federal</option>
 						<option value="ES"
-							<%if ("ES".equals(request.getAttribute("estadoCliente")))
-	out.print("selected");%>>Esp�rito
+							<%if ("ES".equals(clienteModal != null ? clienteModal.getUf() : ""))
+	out.print("selected");%>>Espírito
 							Santo</option>
 						<option value="GO"
-							<%if ("GO".equals(request.getAttribute("estadoCliente")))
-	out.print("selected");%>>Goi�s</option>
+							<%if ("GO".equals(clienteModal != null ? clienteModal.getUf() : ""))
+	out.print("selected");%>>Goiás</option>
 						<option value="MA"
-							<%if ("MA".equals(request.getAttribute("estadoCliente")))
-	out.print("selected");%>>Maranh�o</option>
+							<%if ("MA".equals(clienteModal != null ? clienteModal.getUf() : ""))
+	out.print("selected");%>>Maranhão</option>
 						<option value="MT"
-							<%if ("MT".equals(request.getAttribute("estadoCliente")))
+							<%if ("MT".equals(clienteModal != null ? clienteModal.getUf() : ""))
 	out.print("selected");%>>Mato
 							Grosso</option>
 						<option value="MS"
-							<%if ("MS".equals(request.getAttribute("estadoCliente")))
+							<%if ("MS".equals(clienteModal != null ? clienteModal.getUf() : ""))
 	out.print("selected");%>>Mato
 							Grosso do Sul</option>
 						<option value="MG"
-							<%if ("MG".equals(request.getAttribute("estadoCliente")))
+							<%if ("MG".equals(clienteModal != null ? clienteModal.getUf() : ""))
 	out.print("selected");%>>Minas
 							Gerais</option>
 						<option value="PA"
-							<%if ("PA".equals(request.getAttribute("estadoCliente")))
-	out.print("selected");%>>Par�</option>
+							<%if ("PA".equals(clienteModal != null ? clienteModal.getUf() : ""))
+	out.print("selected");%>>Pará</option>
 						<option value="PB"
-							<%if ("PB".equals(request.getAttribute("estadoCliente")))
-	out.print("selected");%>>Para�ba</option>
+							<%if ("PB".equals(clienteModal != null ? clienteModal.getUf() : ""))
+	out.print("selected");%>>Paraíba</option>
 						<option value="PR"
-							<%if ("PR".equals(request.getAttribute("estadoCliente")))
-	out.print("selected");%>>Paran�</option>
+							<%if ("PR".equals(clienteModal != null ? clienteModal.getUf() : ""))
+	out.print("selected");%>>Paraná</option>
 						<option value="PE"
-							<%if ("PE".equals(request.getAttribute("estadoCliente")))
+							<%if ("PE".equals(clienteModal != null ? clienteModal.getUf() : ""))
 	out.print("selected");%>>Pernambuco</option>
 						<option value="PI"
-							<%if ("PI".equals(request.getAttribute("estadoCliente")))
-	out.print("selected");%>>Piau�</option>
+							<%if ("PI".equals(clienteModal != null ? clienteModal.getUf() : ""))
+	out.print("selected");%>>Piauí</option>
 						<option value="RJ"
-							<%if ("RJ".equals(request.getAttribute("estadoCliente")))
+							<%if ("RJ".equals(clienteModal != null ? clienteModal.getUf() : ""))
 	out.print("selected");%>>Rio
 							de Janeiro</option>
 						<option value="RN"
-							<%if ("RN".equals(request.getAttribute("estadoCliente")))
+							<%if ("RN".equals(clienteModal != null ? clienteModal.getUf() : ""))
 	out.print("selected");%>>Rio
 							Grande do Norte</option>
 						<option value="RS"
-							<%if ("RS".equals(request.getAttribute("estadoCliente")))
+							<%if ("RS".equals(clienteModal != null ? clienteModal.getUf() : ""))
 	out.print("selected");%>>Rio
 							Grande do Sul</option>
 						<option value="RO"
-							<%if ("RO".equals(request.getAttribute("estadoCliente")))
-	out.print("selected");%>>Rond�nia</option>
+							<%if ("RO".equals(clienteModal != null ? clienteModal.getUf() : ""))
+	out.print("selected");%>>Rondônia</option>
 						<option value="RR"
-							<%if ("RR".equals(request.getAttribute("estadoCliente")))
+							<%if ("RR".equals(clienteModal != null ? clienteModal.getUf() : ""))
 	out.print("selected");%>>Roraima</option>
 						<option value="SC"
-							<%if ("SC".equals(request.getAttribute("estadoCliente")))
+							<%if ("SC".equals(clienteModal != null ? clienteModal.getUf() : ""))
 	out.print("selected");%>>Santa
 							Catarina</option>
 						<option value="SP"
-							<%if ("SP".equals(request.getAttribute("estadoCliente")))
-	out.print("selected");%>>S�o
+							<%if ("SP".equals(clienteModal != null ? clienteModal.getUf() : ""))
+	out.print("selected");%>>São
 							Paulo</option>
 						<option value="SE"
-							<%if ("SE".equals(request.getAttribute("estadoCliente")))
+							<%if ("SE".equals(clienteModal != null ? clienteModal.getUf() : ""))
 	out.print("selected");%>>Sergipe</option>
 						<option value="TO"
-							<%if ("TO".equals(request.getAttribute("estadoCliente")))
+							<%if ("TO".equals(clienteModal != null ? clienteModal.getUf() : ""))
 	out.print("selected");%>>Tocantins</option>
 						<option value="EX"
-							<%if ("EX".equals(request.getAttribute("estadoCliente")))
+							<%if ("EX".equals(clienteModal != null ? clienteModal.getUf() : ""))
 	out.print("selected");%>>Estrangeiro</option>
 					</select>
 
@@ -272,7 +277,7 @@
 
                     <div class="d-flex justify-content-end gap-2 mt-3">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                        <button type="submit" class="btn btn-primary">Salvar Altera��es</button>
+                        <button type="submit" class="btn btn-primary">Salvar Alterações</button>
                     </div>
                 </form>
             </div>
@@ -297,9 +302,9 @@
                     <th>Data</th>
                     <th>Status</th>
                     <th>Total</th>
-                    <th>Observa��o</th>
+                    <th>Observação</th>
                     <th>Pagamento</th>
-                    <th>A��es</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
             <tbody>
@@ -326,7 +331,7 @@
                  
                     <td><%=PedidosCliente.get(i).getDataPeedido() %></td>
                     <td><span class="badge <%= badgeClass %>"><%= status %></span></td>
-                    <td>R$ <%= PedidosCliente.get(i).getTotalPedido() %></td>
+                    <td><%= currencyFormat.format(PedidosCliente.get(i).getTotalPedido()) %></td>
                     <td class="text-truncate" style="max-width: 150px;"><%= PedidosCliente.get(i).getObservacoes() %></td>
                    <td><%=PedidosCliente.get(i).getFormapagamento() != null && !PedidosCliente.get(i).getFormapagamento().isEmpty()
 		? PedidosCliente.get(i).getFormapagamento()
@@ -376,7 +381,7 @@
                                 <tr>
                                     <th>Item</th>
                                     <th>Quantidade</th>
-                                    <th>Preco Unitario</th>
+                                    <th>Preço Unitário</th>
                                     <th>Subtotal</th>
                                 </tr>
                             </thead>
@@ -391,7 +396,38 @@
 </div>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+    
     <script>
+    $(document).ready(function() {
+        
+        // =======================================================
+        // 🚀 Aplicação das Máscaras (jQuery Mask Plugin)
+        // =======================================================
+        
+        // 1. Máscara de Telefone/Celular (Flexível: 8 ou 9 dígitos + DDD)
+        var SPMaskBehavior = function (val) {
+          return val.replace(/\D/g, '').length === 11 ? '(00) 00000-0000' : '(00) 0000-00009';
+        },
+        spOptions = {
+          onKeyPress: function(val, e, field, options) {
+              field.mask(SPMaskBehavior.apply({}, arguments), options);
+            }
+        };
+        $('#telefoneCliente').mask(SPMaskBehavior, spOptions);
+
+        // 2. Máscara de CEP
+        $('#cepPedido').mask('00000-000');
+        
+        // 3. Máscara para Número do Endereço (Opcional: aceita até 5 dígitos)
+        $('#numeroCliente').mask('0#'); 
+
+
+        // =======================================================
+        // 📝 Scripts de Validação e Abertura de Modal (Existente)
+        // =======================================================
+        
         (function () {
             'use strict';
             var forms = document.querySelectorAll('.needs-validation');
@@ -404,37 +440,19 @@
                     form.classList.add('was-validated');
                 }, false);
             });
-           
-					
-				<%if (request.getAttribute("clienteParaModal") != null) {%>
-					$('#modalDadosCadastrais').modal('show');
-				<%}%>
-        })();
-    </script>
-    <script>
-    (function () {
-        'use strict';
-        var forms = document.querySelectorAll('.needs-validation');
-        Array.prototype.slice.call(forms).forEach(function (form) {
-            form.addEventListener('submit', function (event) {
-                if (!form.checkValidity()) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                }
-                form.classList.add('was-validated');
-            }, false);
-        });
 
-        // Este � o scriptlet que abre o modal
-        // Ele verifica se o objeto 'clienteParaModal' foi colocado na requisi��o pelo Servlet
-        <%if (request.getAttribute("clienteParaModal") != null) {%>
-            var modal = new bootstrap.Modal(document.getElementById('modalDadosCadastrais'));
-            modal.show();
-        <%}%>
-    })();
-</script>
-<script>
-    $(document).ready(function() {
+            // Reativa o scriptlet que abre o modal 'modalDadosCadastrais' 
+            // se o atributo 'clienteParaModal' estiver na requisição
+            <%if (request.getAttribute("clienteParaModal") != null) {%>
+                var modal = new bootstrap.Modal(document.getElementById('modalDadosCadastrais'));
+                modal.show();
+            <%}%>
+        })();
+        
+        // =======================================================
+        // 🛒 Script para Visualização de Detalhes do Pedido (Existente)
+        // =======================================================
+
         $('#modalPedidos').on('click', '.visualize-pedido', function(e) {
             e.preventDefault();
             
@@ -451,14 +469,16 @@
                     
                     if (itensPedido && itensPedido.length > 0) {
                         $.each(itensPedido, function(index, item) {
-                            var precoUnitarioFormatado = item.precoUnitario.toFixed(2).replace('.', ',');
-                            var subtotalFormatado = (item.quantidade * item.precoUnitario).toFixed(2).replace('.', ',');
+                            // Formatação para moeda (R$) com 2 casas decimais e vírgula
+                            var precoUnitarioFormatado = parseFloat(item.precoUnitario).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                            var subtotal = item.quantidade * item.precoUnitario;
+                            var subtotalFormatado = subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                             
                             var row = '<tr>' +
                                 '<td>' + item.produto.descricao + '</td>' +
                                 '<td>' + item.quantidade + '</td>' +
-                                '<td>R$ ' + precoUnitarioFormatado + '</td>' +
-                                '<td>R$ ' + subtotalFormatado + '</td>' +
+                                '<td>' + precoUnitarioFormatado + '</td>' +
+                                '<td>' + subtotalFormatado + '</td>' +
                             '</tr>';
                             tableBody.append(row);
                         });
@@ -476,16 +496,50 @@
                 },
                 error: function(xhr) {
                     var errorMessage = 'Erro ao carregar os detalhes do pedido.';
-                    if (xhr.responseJSON && xhr.responseJSON.error) {
-                        errorMessage = xhr.responseJSON.error;
-                    } else {
-                        errorMessage = xhr.responseText;
+                    // Adicionei uma verificação de erro mais robusta
+                    try {
+                        var jsonError = JSON.parse(xhr.responseText);
+                        errorMessage = jsonError.error || jsonError.message || errorMessage;
+                    } catch (e) {
+                        // Se não for JSON, usa o texto ou a mensagem padrão
+                        errorMessage = xhr.responseText.substring(0, 100) + '...' || errorMessage;
                     }
-                    alert(errorMessage);
+                    alert("Erro (" + xhr.status + "): " + errorMessage);
                 }
+                
             });
         });
     });
+    </script>
+    <script>
+$(document).ready(function() {
+    $("#cepPedido").on("keypress", function(e) {
+        if (e.which == 13) {  // Verifica se a tecla pressionada é Enter
+            e.preventDefault(); // Previne o comportamento padrão de envio do formulário
+
+            var numCep = $("#cepPedido").val().replace(".", "").replace("-", ""); // Remover formatação do CEP
+            var url = "https://viacep.com.br/ws/"+numCep+"/json";
+
+            console.log("CEP digitado: " + numCep);
+
+            $.ajax({
+                url: url,
+                type: "get",
+                dataType: "json",
+                success: function(dados) {
+                    console.log("Resposta da API:", dados);
+                    $("#estadoCliente").val(dados.uf);
+                    $("#cidadeCliente").val(dados.localidade);
+                    $("#ruaCliente").val(dados.logradouro);
+                    $("#bairroCliente").val(dados.bairro);
+                },
+                error: function(xhr, status, error) {
+                    console.log("Erro na solicitação AJAX:", error);
+                }
+            });
+        }
+    });
+});
 </script>
 </body>
 </html>

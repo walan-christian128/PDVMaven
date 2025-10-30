@@ -72,7 +72,7 @@ public class ClientesPedidosDAO {
 	   
 	    public void Clientepedido(Clientepedido obj) {
 	    
-	    	String sql = "insert INTO tb_cliente_pedido(nome,telefone,endereco,numero,bairro,cidade,estado,email,senha)value(?,?,?,?,?,?,?,?,?)";
+	    	String sql = "insert INTO tb_cliente_pedido(nome,telefone,endereco,numero,cepPedido,bairro,cidade,estado,email,senha)value(?,?,?,?,?,?,?,?,?,?)";
 	    	
 	    	try {
 	    		PreparedStatement stmt = con.prepareStatement(sql);
@@ -81,11 +81,12 @@ public class ClientesPedidosDAO {
 	    		stmt.setString(2, obj.getTelefone());
 	    		stmt.setString(3, obj.getEndereco());
 	    		stmt.setInt(4, obj.getNumero());
-	    		stmt.setString(5, obj.getBairro());
-	    		stmt.setString(6, obj.getCidade());
-	    		stmt.setString(7, obj.getUf());
-	    		stmt.setString(8, obj.getEmail());
-	    		stmt.setString(9, PasswordUtil.hashPassword(obj.getSenha()));
+	    		stmt.setString(5, obj.getCep());
+	    		stmt.setString(6, obj.getBairro());
+	    		stmt.setString(7, obj.getCidade());
+	    		stmt.setString(8, obj.getUf());
+	    		stmt.setString(9, obj.getEmail());
+	    		stmt.setString(10, PasswordUtil.hashPassword(obj.getSenha()));
 	    		
 	    		
 	    		stmt.execute();
@@ -101,7 +102,7 @@ public class ClientesPedidosDAO {
 	    }
 public Clientepedido selecionaClientePedido(int codigo) {
 	
-	String sql = " select id,nome,telefone,email,endereco,numero,bairro,cidade,estado from tb_cliente_pedido where id = ? ";
+	String sql = " select id,nome,telefone,email,endereco,numero,cepPedido,bairro,cidade,estado from tb_cliente_pedido where id = ? ";
 	Clientepedido cp = new Clientepedido();
 	try {
 		PreparedStatement stmt = con.prepareStatement(sql);
@@ -115,6 +116,7 @@ public Clientepedido selecionaClientePedido(int codigo) {
 			cp.setEmail(rs.getString("email"));
 			cp.setEndereco(rs.getString("endereco"));
 			cp.setNumero(rs.getInt("numero"));
+			cp.setCep(rs.getString("cepPedido"));
 			cp.setBairro(rs.getString("bairro"));
 			cp.setCidade(rs.getString("cidade"));
 			cp.setUf(rs.getString("estado"));
@@ -166,7 +168,7 @@ public List<Pedidos> pedidosCliente(int codigo) {
 }
 public void alteraClientePedido(Clientepedido obj) {
 	
-	String sql = " update tb_cliente_pedido set nome=?,telefone=?,endereco=?,numero=?,bairro=?,cidade=?,estado=?,email=? where id = ? " ;
+	String sql = " update tb_cliente_pedido set nome=?,telefone=?,endereco=?,numero=?,cepPedido=?,bairro=?,cidade=?,estado=?,email=? where id = ? " ;
 	
 	try {
 		PreparedStatement stmt = con.prepareStatement(sql);
@@ -174,11 +176,12 @@ public void alteraClientePedido(Clientepedido obj) {
 		stmt.setString(2, obj.getCelular());
 		stmt.setString(3, obj.getEndereco());
 		stmt.setInt(4, obj.getNumero());
-		stmt.setString(5, obj.getBairro());
-		stmt.setString(6, obj.getCidade());
-		stmt.setString(7, obj.getUf());
-		stmt.setString(8, obj.getEmail());
-		stmt.setInt(9, obj.getId());
+		stmt.setString(5, obj.getCep());
+		stmt.setString(6, obj.getBairro());
+		stmt.setString(7, obj.getCidade());
+		stmt.setString(8, obj.getUf());
+		stmt.setString(9, obj.getEmail());
+		stmt.setInt(10, obj.getId());
 		
 		stmt.executeUpdate();
 		stmt.close();

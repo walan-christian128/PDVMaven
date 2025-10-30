@@ -1,5 +1,7 @@
 package Model;
 
+import java.math.BigDecimal;
+
 public class Pedidos {
  private int idPedido;
  private Empresa empresa;
@@ -44,6 +46,27 @@ public class Pedidos {
  private String status;
  private String observacoes;
  private String formapagamento;
+ public String getPagamentoPedido() {
+	return pagamentoPedido;
+}
+ public void setPagamentoPedido(String pagamentoPedido) {
+	this.pagamentoPedido = pagamentoPedido;
+ }
+ public String getReferecialPedido() {
+	return referecialPedido;
+ }
+ public void setReferecialPedido(String referecialPedido) {
+	this.referecialPedido = referecialPedido;
+ }
+ public BigDecimal getPgTotalPedidoOnline() {
+	return pgTotalPedidoOnline;
+ }
+ public void setPgTotalPedidoOnline(BigDecimal pgTotalPedidoOnline) {
+	this.pgTotalPedidoOnline = pgTotalPedidoOnline;
+ }
+ private String pagamentoPedido;
+ private String referecialPedido;
+ private BigDecimal pgTotalPedidoOnline;
  public double getTotalPedido() {
 	return totalPedido;
 }

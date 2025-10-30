@@ -13,7 +13,9 @@ import Model.Clientepedido; // Ajuste o pacote para onde sua classe Clientepedid
 import Model.Empresa;
 import Model.Pedidos;     // Ajuste o pacote para onde sua classe Pedidos está
 // import Model.Vendas; // Não usada na classe fornecida, pode ser removida se não for necessária
+import Model.Vendas;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -681,5 +683,63 @@ public class PedidosDAO {
             stmt.executeUpdate();
         }
     }
+    public BigDecimal retornaPedidoValor() {
+	    String sql = "SELECT TOTAL_PEDIDO FROM pedidos WHERE id_pedido = (SELECT MAX(id_pedido) FROM pedidos)";
+	    BigDecimal valorPedido = BigDecimal.ZERO;
+
+	    try (PreparedStatement stmt = con.prepareStatement(sql);
+	         ResultSet rs = stmt.executeQuery()) {
+
+	        if (rs.next()) {
+	        	valorPedido = rs.getBigDecimal("TOTAL_PEDIDO"); // pega direto como BigDecimal
+	        }
+
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	    }
+
+	    return valorPedido;
+	}
+    public boolean atualizarPedidoOnline(int idPedido, Pedidos pedido) {
+        String sql = "UPDATE pedidos SET pagamentoPedido = ?, referenciaPedido = ?, pagamentoTotalPedidoOnline = ? WHERE id_pedido = ?";
+        try (PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setString(1, pedido.getReferecialPedido());
+            if (pedido.getReferecialPedido() != null) {
+                stmt.setBigDecimal(2, pedido.getPgTotalPedidoOnline());
+            } else {
+                stmt.setNull(2, java.sql.Types.DECIMAL);
+            }
+            stmt.setString(3, pedido.getReferecialPedido());
+            stmt.setInt(4, idPedido);
+
+            int rows = stmt.executeUpdate();
+            return rows > 0;
+        } catch (SQLException e) {
+            System.err.println("Erro ao atualizar venda online: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+    public boolean atualizarStatuspedido(int idPedido, String novoStatus) throws SQLException {
+        String sql = "UPDATE pedidos SET pagamentoPedido = ? WHERE id_pedido = ?";
+        try (PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setString(1, novoStatus);
+            stmt.setInt(2, idPedido);
+            int rows = stmt.executeUpdate();
+            return rows > 0;
+        }
+    }
+    public String getStatusPedidoPorId(String orderId) throws SQLException {
+	    String sql = "SELECT pagamentoPedido FROM pedidos WHERE referencialPedido = ?";
+	    try (PreparedStatement stmt = con.prepareStatement(sql)) {
+	        stmt.setString(1, orderId);
+	        ResultSet rs = stmt.executeQuery();
+	        if (rs.next()) {
+	            return rs.getString("pagamentoPedido");
+	        }
+	    }
+	    System.out.println(sql);
+	    return null;
+	}
 
 }

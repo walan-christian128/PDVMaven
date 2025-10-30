@@ -47,6 +47,10 @@ totalVendasDia = dao.retornaTotalVendaPorDia(data_venda);
 
 // Definir o total de vendas como atributo da requisição
 request.setAttribute("totalVendido", totalVendasDia);
+
+// Limites de Alerta (os mesmos usados no JS)
+int limiteAlertaCritico = 3; // Pisca
+int limiteAlertaBaixo = 10;  // Amarelo sólido
 %>
 
 
@@ -58,31 +62,58 @@ request.setAttribute("totalVendido", totalVendasDia);
 <title>Home</title>
 <link rel="icon"
 	href="img/2992664_cart_dollar_mobile_shopping_smartphone_icon.png">
-<!-- Link para o Bootstrap 5 -->
 <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
 <script src="bootstrap/js/bootstrap.bundle.min.js"></script>
 
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Q/jnqA9/ctw53zwTwj9tdG1x8czgkF+4hJbUBt1ZZbPr42N2zrgfmjjM+KAX1nbj" crossorigin="anonymous">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLMD/CDpYkRSl7Lq+d+bO08bH9n1h3kP3jDk+S7hE007a/uB4P9/1yA6k9d1G89S5+w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
 <body
-	style="background-image: url('img/Gemini_Generated_Image_97a36f97a36f97a3.jpg'); background-size: auto auto; background-position: center; margin: 0; padding: 0; height: 100vh; width: 100vw;">
+	style="background-image: url('img/Gemini_Generated_Image_97a36f97a36f97a3.jpg'); background-size: auto auto; background-position: center; margin: 0; padding: 0; min-height: 100vh; width: 100vw;">
    
 	<%@ include file="menu.jsp"%>
 
 	<div class="container mt-4">
-		<div class="row">
+		
+		<div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card bg-success text-white shadow">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-shopping-cart"></i> Total Vendido Hoje</h5>
+                        <p class="card-text fs-2">R$ <%= String.format("%.2f", totalVendasDia) %></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card bg-dark text-white shadow">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-box"></i> Produtos Disponivel em estoque</h5>
+                        <p class="card-text fs-2"><%= prodp != null ? prodp.size() : 0 %></p>
+                    </div>
+                </div>
+            </div>
+            
+             <div class="col-md-4 d-flex align-items-center justify-content-end">
+                <a href="realizarVendas.jsp" class="btn btn-lg btn-danger shadow-lg">
+                    <i class="fas fa-cash-register"></i> NOVA VENDA
+                </a>
+            </div>
+        </div>
+        <div class="row">
 			<div class="col-md-6">
 				<h2>Vendas do Dia</h2>
-				<table class="table table-dark table-striped table-hover">
+				<input type="text" id="filtroVendas" class="form-control mb-2 bg-dark text-white" placeholder="Buscar venda por Código ou Cliente..." data-table="tabelaVendas">
+
+				<table id="tabelaVendas" class="table table-dark table-striped table-hover">
 					<thead>
 						<tr>
 							<th>Código</th>
 							<th>Nome</th>
 							<th>Data</th>
 							<th>Total</th>
-							<th>Observações</th>
-							<th>Desconto</th>
-							<th>Forma De Pagamento</th>
+							<th>Obs</th> <th>Desconto</th>
+							<th>Pagamento</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -96,7 +127,7 @@ request.setAttribute("totalVendido", totalVendasDia);
 							<td><a href="selecionarVenda?id=<%=lista.get(i).getId()%>" class="text-white text-decoration-none"><%=lista.get(i).getCliente() != null && lista.get(i).getCliente().getNome() != null ? lista.get(i).getCliente().getNome() : "" %></a></td>
 							<td><a href="selecionarVenda?id=<%=lista.get(i).getId()%>" class="text-white text-decoration-none"><%=lista.get(i).getData_venda()%></a></td>
 							<td><a href="selecionarVenda?id=<%=lista.get(i).getId()%>" class="text-white text-decoration-none"><%=lista.get(i).getTotal_venda()%></a></td>
-							<td><a href="selecionarVenda?id=<%=lista.get(i).getId()%>" class="text-white text-decoration-none"><%=lista.get(i).getObs()%></a></td>
+							<td><a href="selecionarVenda?id=<%=lista.get(i).getId()%>" class="text-white text-decoration-none" title="<%=lista.get(i).getObs()%>">...</a></td>
 							<td><a href="selecionarVenda?id=<%=lista.get(i).getId()%>" class="text-white text-decoration-none"><%=lista.get(i).getDesconto()%></a></td>
 							<td><a href="selecionarVenda?id=<%=lista.get(i).getId()%>" class="text-white text-decoration-none"><%=lista.get(i).getformaPagamento()%></a></td>
 						</tr>
@@ -105,7 +136,7 @@ request.setAttribute("totalVendido", totalVendasDia);
 						} else {
 						%>
 						<tr>
-							<td colspan="6">Não há vendas disponíveis na data de hoje.</td>
+							<td colspan="7">Não há vendas disponíveis na data de hoje.</td>
 						</tr>
 						<%
 						}
@@ -114,73 +145,227 @@ request.setAttribute("totalVendido", totalVendasDia);
 				</table>
 				
 				<div class="mb-3 p-3">
-					<label class="form-label">Total Diário Vendido: </label> <input
+					<label class="form-label">Usuário Logado: </label> <input
 						type="text" class="form-control bg-dark text-white"
-						name="totalVendido"
-						value="<%=request.getAttribute("totalVendido") != null ? request.getAttribute("totalVendido").toString() : ""%>"
+						name="Usuarionome"
+						value="<%
+                                Model.Usuario usuario = (Model.Usuario) session.getAttribute("usuarioNome");
+                                if (usuario != null) {
+	                                out.println("Usuario: " + usuario.getNome());
+                                } else {
+	                                out.println("Usuário não encontrado.");
+                                }
+                            %>"
 						aria-label="Sizing example input"
-						aria-describedby="inputGroup-sizing-sm">
+						aria-describedby="inputGroup-sizing-sm" readonly>
 				</div>
 			</div>
 			
 
 			<div class="col-md-6">
 				<h2>Produtos em Estoque</h2>
-				<table class="table table-dark table-striped table-hover">
+				<input type="text" id="filtroProdutos" class="form-control mb-2 bg-dark text-white" placeholder="Buscar produto por Código ou Descrição..." data-table="tabelaProdutos">
+
+				<table id="tabelaProdutos" class="table table-dark table-striped table-hover">
 					<thead>
 						<tr>
 							<th>Código</th>
 							<th>Descrição</th>
-							<th>Quantidade</th>
+							<th class="sortable" data-sort-by="2">Quantidade <i class="fas fa-sort-numeric-down text-secondary"></i></th>
 						</tr>
 					</thead>
 					<tbody>
 						<%
 						if (prodp != null && !prodp.isEmpty()) {
 							for (int i = 0; i < prodp.size(); i++) {
+								int quantidade = prodp.get(i).getQtd_estoque();
+								String classeAlerta = "";
+								String iconeStatus = "";
+
+								if (quantidade <= limiteAlertaCritico) {
+							        // ALERTA CRÍTICO (Pisca-Pisca)
+							        classeAlerta = "alerta-estoque-critico";
+							        iconeStatus = "<i class='fas fa-exclamation-triangle text-danger pisca'></i> ";
+								} else if (quantidade <= limiteAlertaBaixo) {
+							        // ALERTA BAIXO (Amarelo Sólido)
+							        classeAlerta = "alerta-estoque-baixo";
+							        iconeStatus = "<i class='fas fa-exclamation-circle text-warning'></i> ";
+								} else {
+							        // ESTOQUE NORMAL
+							        iconeStatus = "<i class='fas fa-check-circle text-success'></i> ";
+								}
 						%>
-						<tr id="<%=prodp.get(i).getId()%>" class="linha-editar"
-							data-id="<%=prodp.get(i).getId()%>">
-							<td><a href="select?id=<%=prodp.get(i).getId()%>"  class="text-white text-decoration-none"><%=prodp.get(i).getId()%></a></td>
-							<td><a href="select?id=<%=prodp.get(i).getId()%>"  class="text-white text-decoration-none"><%=prodp.get(i).getDescricao()%></a></td>
-							<td><a href="select?id=<%=prodp.get(i).getId()%>"  class="text-white text-decoration-none"><%=prodp.get(i).getQtd_estoque()%></a></td>
+						<tr id="<%=prodp.get(i).getId()%>"
+							class="linha-editar <%=classeAlerta%>"
+							data-id="<%=prodp.get(i).getId()%>"
+							data-qtd="<%=quantidade%>"> <td><a href="select?id=<%=prodp.get(i).getId()%>"
+								class="text-white text-decoration-none"><%=prodp.get(i).getId()%></a></td>
+							<td><a href="select?id=<%=prodp.get(i).getId()%>"
+								class="text-white text-decoration-none"><%=prodp.get(i).getDescricao()%></a></td>
+							<td><a href="select?id=<%=prodp.get(i).getId()%>"
+								class="text-white text-decoration-none">
+								<%=iconeStatus%> <%=quantidade%></a></td>
 						</tr>
 						<%
 						}
 						} else {
 						%>
 						<tr>
-							<td colspan="6">Não há produtos disponíveis no estoque.</td>
+							<td colspan="3">Não há produtos disponíveis no estoque.</td>
 						</tr>
 						<%
 						}
 						%>
 					</tbody>
 				</table>
-		<div class="col-md-6">
-					<input type="text" class="form-control bg-dark text-white"
-						name="Usuarionome"
-						value="<%
-                                // Volte a esperar um objeto Model.Usuario aqui
-                                Model.Usuario usuario = (Model.Usuario) session.getAttribute("usuarioNome");
-                                if (usuario != null) {
-	                                String nomeUsuario = usuario.getNome();
-	                                out.println("Usuario : " + nomeUsuario); // Ou out.print(nomeUsuario); dependendo do que você quer no input value
-                                } else {
-	                                out.println("Usuário não encontrado na sessão.");
-                                }
-                            %>"
-						aria-label="Sizing example input"
-						aria-describedby="inputGroup-sizing-sm">
-				</div>
 			</div>
 		</div>
 	</div>
 
-	<!-- Link para o Bootstrap 5 JS -->
-	<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js" integrity="sha384-oBqDVmMz4fnFO9gybP6mFfFFjwB9wdKzRzj6pU1nFJWcXyYn3xU8gD0VYqzZp7O9K" crossorigin="anonymous"></script>
-	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js" integrity="sha384-cuOtV/3TIq0zEgmMdx4KhD2a6CZIBIc4OS1FtOSY//z5fPiDF1OC5Y+dIRejkKe0" crossorigin="anonymous"></script>
-	
-</body>
+	<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+    
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawR3GWtYfFMi/xa6I6dZ5p6vS+I623T4w15Q=" crossorigin="anonymous"></script>
+    
+	<style>
+/* -------------------------------------- */
+/* ESTILOS CSS PARA ALERTAS E USABILIDADE */
+/* -------------------------------------- */
 
+/* 1. Alerta de Estoque Crítico (Pisca) */
+.alerta-estoque-critico {
+    /* Cor base mais forte */
+    background-color: #dc3545 !important; /* Vermelho/Danger */
+    color: white !important;
+}
+
+.alerta-estoque-critico a, .alerta-estoque-critico .fas {
+    color: white !important; 
+}
+
+/* Classe que será alternada pelo JS */
+.blink-ativo {
+    background-color: #ffc107 !important; /* Amarelo/Warning */
+    color: #343a40 !important; /* Texto escuro */
+}
+
+.blink-ativo a, .blink-ativo .fas {
+    color: #343a40 !important; 
+}
+
+
+/* 2. Alerta de Estoque Baixo (Sólido) */
+.alerta-estoque-baixo {
+    background-color: #ffc107 !important; /* Amarelo/Warning */
+    color: #343a40 !important; 
+}
+
+.alerta-estoque-baixo a, .alerta-estoque-baixo .fas {
+    color: #343a40 !important;
+}
+
+/* 3. Ícone Pisca-Pisca (apenas o ícone) */
+.pisca {
+    animation: blinker 0.8s linear infinite;
+}
+
+@keyframes blinker {
+    50% { opacity: 0.0; }
+}
+
+/* Estilo para a coluna de OBS da tabela de Vendas */
+#tabelaVendas tbody tr td:nth-child(5) {
+    max-width: 50px; /* Reduz a largura da coluna de OBS */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+	</style>
+</body>
+<script>
+    
+    // --------------------------------------
+    // 1. FUNÇÃO PISCA-PISCA (Estoque Crítico)
+    // --------------------------------------
+    function piscarAlertaEstoque() {
+        // Alterna a classe 'blink-ativo' apenas nas linhas críticas
+        $('.alerta-estoque-critico').each(function() {
+            $(this).toggleClass('blink-ativo');
+        });
+    }
+
+    // --------------------------------------
+    // 2. FILTRAGEM DE TABELAS EM TEMPO REAL
+    // --------------------------------------
+    function setupTableFilter(inputId, tableId) {
+        $(inputId).on("keyup", function() {
+            var value = $(this).val().toLowerCase();
+            $(tableId + " tbody tr").filter(function() {
+                // Filtra se o texto de qualquer célula (td) contém o valor de busca
+                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+            });
+        });
+    }
+    
+    // --------------------------------------
+    // 3. ORDENAÇÃO DE COLUNAS (Quantidade)
+    // --------------------------------------
+    function setupTableSorting(tableId) {
+        $(tableId + ' th[data-sort-by]').on('click', function() {
+            var table = $(this).parents('table').eq(0);
+            var rows = table.find('tbody > tr').toArray().sort(comparer($(this).index()));
+            this.asc = !this.asc;
+            if (!this.asc) {
+                rows = rows.reverse();
+            }
+            for (var i = 0; i < rows.length; i++) {
+                table.append(rows[i]);
+            }
+            
+            // Atualiza o ícone de ordenação
+            var icon = $(this).find('i');
+            table.find('th i').removeClass('fa-sort-up fa-sort-down').addClass('fa-sort-numeric-down');
+            if (this.asc) {
+                icon.removeClass('fa-sort-numeric-down').addClass('fa-sort-up');
+            } else {
+                icon.removeClass('fa-sort-numeric-down').addClass('fa-sort-down');
+            }
+        });
+
+        // Função comparadora para números
+        function comparer(index) {
+            return function(a, b) {
+                // Obtém o valor numérico (usando data-qtd para maior precisão)
+                var valA = parseFloat($(a).data('qtd'));
+                var valB = parseFloat($(b).data('qtd'));
+                
+                if (valA < valB) return -1;
+                if (valA > valB) return 1;
+                return 0;
+            }
+        }
+    }
+
+
+    // --------------------------------------
+    // 4. INICIALIZAÇÃO GERAL
+    // --------------------------------------
+    $(document).ready(function() {
+        // Inicializa o pisca-pisca para linhas críticas
+        // Se você quiser que o pisca pare, comente esta linha e adicione um setTimeout
+        setInterval(piscarAlertaEstoque, 800); 
+
+        // Inicializa os filtros de busca
+        setupTableFilter('#filtroVendas', '#tabelaVendas');
+        setupTableFilter('#filtroProdutos', '#tabelaProdutos');
+        
+        // Inicializa a ordenação da tabela de Produtos
+        setupTableSorting('#tabelaProdutos');
+        
+        // Inicializa Tooltip do Bootstrap para Observações (se necessário)
+        // Certifique-se de que o Bootstrap JS está carregado antes!
+        $('[title]').tooltip();
+    });
+</script>
 </html>

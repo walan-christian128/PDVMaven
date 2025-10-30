@@ -193,6 +193,7 @@ public class clientePedidoServer extends HttpServlet {
 		String telefonecli = request.getParameter("telefoneCliente");
 		String emailcli = request.getParameter("emailCliente");
 		String numerocli = request.getParameter("numeroCliente");
+		String cepPedido  = request.getParameter("cepPedido");
 		String bairrocli = request.getParameter("bairroCliente");
 		String cidadecli = request.getParameter("cidadeCliente");
 		String estadocli = request.getParameter("estadoCliente");
@@ -217,6 +218,7 @@ public class clientePedidoServer extends HttpServlet {
 
 				int cliNumero = Integer.parseInt(numerocli);
 				cliPed.setNumero(cliNumero);
+				cliPed.setCep(cepPedido);
 
 			}
 			if (bairrocli != null && !bairrocli.isEmpty()) {
@@ -258,6 +260,7 @@ public class clientePedidoServer extends HttpServlet {
 		String endereco = request.getParameter("endereco");
 
 		String numero = request.getParameter("numero");
+		String cepPedido = request.getParameter("cepPedido");
 
 		String bairro = request.getParameter("bairro");
 
@@ -286,6 +289,7 @@ public class clientePedidoServer extends HttpServlet {
 			cpd.setTelefone(telefone);
 
 			cpd.setNumero(Integer.parseInt(numero));
+			cpd.setCep(cepPedido);
 
 			cpd.setBairro(bairro);
 
