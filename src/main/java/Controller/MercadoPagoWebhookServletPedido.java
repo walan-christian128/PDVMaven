@@ -5,7 +5,6 @@ import com.mercadopago.client.payment.PaymentClient;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.resources.payment.Payment;
 import DAO.ConfigPagamentoDAO;
-import DAO.PedidosDAO;
 import DAO.VendasDAO;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -20,8 +19,8 @@ import org.json.JSONObject;
 import javax.naming.NamingException;
 
 
-@WebServlet("/mercadopago-webhook-pedido")
-public class MercadoPagoWebhookServlet extends HttpServlet {
+@WebServlet("/mercadopago-webhook")
+public class MercadoPagoWebhookServletPedido extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
 
@@ -161,11 +160,11 @@ public class MercadoPagoWebhookServlet extends HttpServlet {
 
         // Busca o access_token no banco via DAO da empresa correta
         ConfigPagamentoDAO configDAO;
-        PedidosDAO dao;
+        VendasDAO dao;
         
         try {
             configDAO = new ConfigPagamentoDAO(empresa);
-            dao = new PedidosDAO(empresa);
+            dao = new VendasDAO(empresa);
         } catch (NamingException e) {
             System.err.println("Erro ao inicializar DAO para a empresa " + empresa + ": " + e.getMessage());
             return;
@@ -188,7 +187,7 @@ public class MercadoPagoWebhookServlet extends HttpServlet {
 
 
         // Determina o status final a ser atualizado
-        String statusPedido = switch (status) {
+        String statusVenda = switch (status) {
             case "approved" -> "APROVADA";
             case "pending" -> "PENDENTE";
             case "rejected" -> "REJEITADA";
@@ -197,14 +196,14 @@ public class MercadoPagoWebhookServlet extends HttpServlet {
             default -> null;
         };
 
-        if (statusPedido != null) {
-             boolean atualizado = dao.atualizarPedidoOnlineStatus(referenciaVendaParaDB, statusPedido); // Usa o método de String
+        if (statusVenda != null) {
+             boolean atualizado = dao.atualizarStatusVenda(referenciaVendaParaDB, statusVenda); // Usa o método de String
             
             // Seu método atualizarStatusVenda(String externalReference, String novoStatus) está sendo usado aqui.
             // Se a sua coluna external_reference NO DB contém a CHAVE LIMPA (UUID), isso funcionará!
             
             if (atualizado) {
-                System.out.println("✅ Venda " + referenciaVendaParaDB + " atualizada para " + statusPedido);
+                System.out.println("✅ Venda " + referenciaVendaParaDB + " atualizada para " + statusVenda);
             } else {
                 System.err.println("⚠️ Nenhuma venda encontrada com referência " + referenciaVendaParaDB);
             }

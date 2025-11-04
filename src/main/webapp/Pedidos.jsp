@@ -275,6 +275,7 @@ NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("pt", 
 										<th>Total Pedido</th>
 										<th>Observação</th>
 										<th>Forma de pagamento</th>
+										<th>Pagamento Online</th>
 										<th>Ações</th>
 									</tr>
 								</thead>
@@ -295,6 +296,9 @@ NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("pt", 
 		: "-"%></td>
 										<td><%=pedidos.get(i).getFormapagamento() != null && !pedidos.get(i).getFormapagamento().isEmpty()
 		? pedidos.get(i).getFormapagamento()
+		: "-"%></td>                    
+		                                <td><%=pedidos.get(i).getPagamentoPedido() != null && !pedidos.get(i).getPagamentoPedido().isEmpty()
+		? pedidos.get(i).getPagamentoPedido()
 		: "-"%></td>
 										<td>
 											<button type="button"
@@ -560,6 +564,7 @@ NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("pt", 
 										<th>Total Pedido</th>
 										<th>Observação</th>
 										<th>Forma de pagamento</th>
+										<th>Pagamento Online</th>
 										<th>Ações</th>
 									</tr>
 								</thead>
@@ -580,6 +585,9 @@ NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("pt", 
 		: "-"%></td>
 										<td><%=Pedidostodos.get(i).getFormapagamento() != null && !Pedidostodos.get(i).getFormapagamento().isEmpty()
 		? Pedidostodos.get(i).getFormapagamento()
+		: "-"%></td>
+		                             <td><%=Pedidostodos.get(i).getPagamentoPedido() != null && !Pedidostodos.get(i).getPagamentoPedido().isEmpty()
+		? Pedidostodos.get(i).getPagamentoPedido()
 		: "-"%></td>
 										<td>
 											<button type="button"

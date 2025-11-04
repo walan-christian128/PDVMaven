@@ -12,10 +12,10 @@ import com.mercadopago.core.MPRequestOptions;
 import com.google.gson.JsonObject;
 import DAO.ConfigPagamentoDAO;
 import DAO.PedidosDAO;
-import DAO.VendasDAO;
+
 import Model.ConfigPagamento;
 import Model.Pedidos;
-import Model.Vendas; // Importe o modelo Vendas, se usado no DAO
+ // Importe o modelo Vendas, se usado no DAO
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;

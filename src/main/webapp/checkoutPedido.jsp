@@ -1,5 +1,5 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ page import="DAO.VendasDAO" %>
+<%@ page import="DAO.PedidosDAO" %>
 <%@ page import="jakarta.servlet.http.HttpSession" %>
 <%@ page import="java.io.Serializable" %>
 <%@ page import="java.math.BigDecimal" %>
@@ -20,18 +20,18 @@
     }
     
     // OBTENDO O VALOR TOTAL DA VENDA para o Payment Brick
-    BigDecimal totalVenda = BigDecimal.ZERO;
+    BigDecimal totalPedido = BigDecimal.ZERO;
     try {
-        VendasDAO vendasDAO = new VendasDAO(empresa); 
-        totalVenda = vendasDAO.retornaVendaValor();
-        if (totalVenda == null) {
-            totalVenda = BigDecimal.ZERO;
+        PedidosDAO pedidosDAO = new PedidosDAO(empresa); 
+        totalPedido = pedidosDAO.retornaPedidoValor();
+        if (pedidosDAO == null) {
+        	totalPedido = BigDecimal.ZERO;
         }
     } catch (Exception e) {
         System.err.println("Erro ao obter valor da venda no JSP: " + e.getMessage());
     }
     
-    String totalVendaString = totalVenda.toString();
+    String totalPedidoString = totalPedido.toString();
 %>
 
 <!DOCTYPE html>
@@ -41,7 +41,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
      <link rel="icon"
 	href="img/2992664_cart_dollar_mobile_shopping_smartphone_icon.png">
-    <title>Finalizar Compra</title>
+    <title>Finalizar Pedido</title>
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -540,7 +540,7 @@ let brickInitialized = false;
 const idEmpresaParaMP = <%= idEmpresaParaMP %>; 
 
 // ✅ Obtém o valor total da venda do bloco Java
-const totalAmountJSP = parseFloat("<%= totalVendaString %>");
+const totalAmountJSP = parseFloat("<%= totalPedidoString %>");
 
 // Função para fechar modais
 function closeModal(modalId) {
@@ -651,7 +651,7 @@ showCardButton.addEventListener('click', async () => {
                         console.log("💳 Resposta do servidor (Flow 2):", result);
 
                         if (paymentResponse.ok && result.status === "approved") {
-                            window.location.href = 'sucesso.jsp';
+                            window.location.href = 'pagamento-sucessoPedido.jsp';
                         } else {
                             // Se o pagamento não for aprovado ou der erro 500, o resultado virá aqui
                             const statusDetail = result.status_detail || (result.error ? result.error : 'erro desconhecido');

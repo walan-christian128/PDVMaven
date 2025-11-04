@@ -9,9 +9,10 @@ import com.mercadopago.exceptions.MPException;
 import com.mercadopago.resources.payment.Payment;
 import com.google.gson.JsonObject;
 import DAO.ConfigPagamentoDAO;
-import DAO.VendasDAO;
+import DAO.PedidosDAO;
 
-import Model.Vendas;
+import Model.Pedidos;
+
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -24,6 +25,7 @@ import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.sql.SQLException;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import javax.naming.NamingException;
@@ -78,8 +80,8 @@ public class CriaPagamentoPixServletPedido extends HttpServlet {
             // ✅ Configura o access token do Mercado Pago
             MercadoPagoConfig.setAccessToken(accessToken);
 
-            VendasDAO dao = new VendasDAO(empresa);
-            BigDecimal amount = dao.retornaVendaValor();
+            PedidosDAO dao = new PedidosDAO(empresa);
+            BigDecimal amount = dao.retornaPedidoValor();
 
             if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
                 System.err.println("Erro: Valor da transação é inválido.");
@@ -95,7 +97,7 @@ public class CriaPagamentoPixServletPedido extends HttpServlet {
             }
             
             // ✅ Gera externalReference e cria a requisição de pagamento
-            String externalReference = empresa + "_" + UUID.randomUUID().toString();
+            String referenciaVenda = empresa + "_" + UUID.randomUUID().toString();
             String notificationUrl = ngrokBaseUrl + "/PDVVenda/mercadopago-webhook";
             
             System.out.println("URL de notificação para o Pix: " + notificationUrl);
@@ -109,7 +111,7 @@ public class CriaPagamentoPixServletPedido extends HttpServlet {
                     .transactionAmount(amount)
                     .description("Produto do Pedido")
                     .paymentMethodId("pix")
-                    .externalReference(externalReference)
+                    .externalReference(referenciaVenda)
                     .notificationUrl(notificationUrl)
                     .dateOfExpiration(OffsetDateTime.now().plusMinutes(30))
                     .payer(payerRequest)
@@ -126,19 +128,19 @@ public class CriaPagamentoPixServletPedido extends HttpServlet {
             }
 
             // ✅ Aqui atualizamos a última venda cadastrada com os dados do pagamento online
-            int idVendaExistente = dao.retornaVenda(); // método precisa existir no seu DAO
+            int idPedido = dao.retornaUltimoPedido(); // método precisa existir no seu DAO
 
-            Vendas vendaParaAtualizar = new Vendas();
-            vendaParaAtualizar.setExternalReference(externalReference);
-            vendaParaAtualizar.setPgTotalOnline(amount);
-            vendaParaAtualizar.setSetStatusVenda("PENDENTE"); // Corrigido: não usar setSetStatusVenda
+            Pedidos PedidosParaAtualizar = new Pedidos();
+            PedidosParaAtualizar.setReferecialPedido(empresa + "_" + referenciaVenda); 
+            PedidosParaAtualizar.setPgTotalPedidoOnline(amount);// Referência completa
+            PedidosParaAtualizar.setPagamentoPedido("PENDENTE");  // Corrigido: não usar setSetStatusVenda
 
-            boolean atualizado = dao.atualizarVendaOnline(idVendaExistente, vendaParaAtualizar);
+            boolean atualizado = dao.atualizarPedidoOnline(idPedido, PedidosParaAtualizar);
 
             if (atualizado) {
-                System.out.println("Venda " + idVendaExistente + " atualizada com externalReference " + externalReference);
+                System.out.println("Venda " + idPedido + " atualizada com externalReference " + referenciaVenda);
             } else {
-                System.err.println("Falha ao atualizar a venda " + idVendaExistente + ". Verifique se ela existe.");
+                System.err.println("Falha ao atualizar a venda " + idPedido + ". Verifique se ela existe.");
             }
 
             // ✅ Retorna os dados do pagamento em JSON para o frontend
@@ -148,7 +150,7 @@ public class CriaPagamentoPixServletPedido extends HttpServlet {
             JsonObject json = new JsonObject();
             json.addProperty("qr_code", qrCode);
             json.addProperty("qr_code_base64", qrCodeBase64);
-            json.addProperty("id", externalReference);
+            json.addProperty("id", referenciaVenda);
 
             response.getWriter().write(json.toString());
 
@@ -161,7 +163,10 @@ public class CriaPagamentoPixServletPedido extends HttpServlet {
         } catch (MPException | NamingException | ClassNotFoundException e) {
             e.printStackTrace();
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Erro ao criar a preferência de pagamento.");
-        }
+        } catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
     }
 
     private String getNgrokTunnelUrl() {

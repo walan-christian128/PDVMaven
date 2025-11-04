@@ -146,19 +146,23 @@ public class PedidosDAO {
         List<Pedidos> listaPedidos = new ArrayList<>();
         String sql;
 
-        sql = "SELECT "
-                + "ped.id_pedido as codigo_pedido, "
-        		+ "ped.total_pedido as total, "
-                + "cli.nome as nome_cliente, "
-                + "ped.clientepedido_id as codigo_cliente, "
-                + "DATE_FORMAT(ped.data_pedido, '%d/%m/%Y %H:%i:%s') AS data_formatada, "
-                + "ped.status as status, "
-                + "ped.observacoes as observacoes, "
-                + "ped.forma_pagamento as forma_pagamento "
-                + "FROM pedidos as ped "
-                + "INNER JOIN tb_cliente_pedido as cli ON cli.id = ped.clientepedido_id "
-                + "WHERE DATE(ped.data_pedido) = CURDATE()"
-                + "AND ped.status = 'Pendente' "; 
+        sql = " SELECT   "
+        		+ " ped.id_pedido as codigo_pedido,   "
+        		+ " ped.total_pedido as total,   "
+        		+ " cli.nome as nome_cliente,   "
+        		+ " ped.clientepedido_id as codigo_cliente,   "
+        		+ " DATE_FORMAT(ped.data_pedido, '%d/%m/%Y %H:%i:%s') AS data_formatada,   "
+        		+ " ped.status as status,   "
+        		+ " ped.observacoes as observacoes,   "
+        		+ " ped.forma_pagamento as forma_pagamento,   "
+        		+ " ped.pagamentoPedido as pedido_pagamento   "
+        		+ " FROM pedidos as ped   "
+        		+ " INNER JOIN tb_cliente_pedido as cli ON cli.id = ped.clientepedido_id   "
+        		+ " WHERE DATE(ped.data_pedido) = CURDATE()  "
+        		+ " AND ped.status = 'Pendente'   "
+        		+ "AND (ped.pagamentoPedido IN ('APROVADA','APPROVED')  "
+        		+ "     OR ped.pagamentoPedido IS NULL  "
+        		+ "     OR ped.pagamentoPedido = '')"; 
 
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
           
@@ -177,6 +181,7 @@ public class PedidosDAO {
                     pedido.setStatus(rs.getString("status"));
                     pedido.setObservacoes(rs.getString("observacoes"));
                     pedido.setFormapagamento(rs.getString("forma_pagamento"));
+                    pedido.setPagamentoPedido(rs.getString("pedido_pagamento"));
                     pedido.setTotalPedido(rs.getDouble("total"));
 
                     pedido.setClientepedido(cliente); 
@@ -282,7 +287,8 @@ public class PedidosDAO {
                  + "DATE_FORMAT(ped.data_pedido, '%d/%m/%Y %H:%i:%s') AS data_formatada, "
                  + "ped.status as status, "
                  + "ped.observacoes as observacoes, "
-                 + "ped.forma_pagamento as forma_pagamento "
+                 + "ped.forma_pagamento as forma_pagamento, "
+                 + "ped.pagamentoPedido as pedido_pagamento "
                  + "FROM pedidos as ped "
                  + "INNER JOIN tb_cliente_pedido as cli ON cli.id = ped.clientepedido_id "
                  + "where status = 'Entregue'"; 
@@ -304,6 +310,7 @@ public class PedidosDAO {
                      pedido.setStatus(rs.getString("status"));
                      pedido.setObservacoes(rs.getString("observacoes"));
                      pedido.setFormapagamento(rs.getString("forma_pagamento"));
+                     pedido.setPagamentoPedido(rs.getString("pedido_pagamento"));
                      pedido.setTotalPedido(rs.getDouble("total"));
 
                      pedido.setClientepedido(cliente); 
@@ -342,7 +349,8 @@ public class PedidosDAO {
                 + "DATE_FORMAT(ped.data_pedido, '%d/%m/%Y %H:%i:%s') AS data_formatada, "
                 + "ped.status as status, "
                 + "ped.observacoes as observacoes, "
-                + "ped.forma_pagamento as forma_pagamento "
+                + "ped.forma_pagamento as forma_pagamento, "
+                + "ped.pagamentoPedido as pedido_pagamento "
                 + "FROM pedidos as ped "
                 + "INNER JOIN tb_cliente_pedido as cli ON cli.id = ped.clientepedido_id "
                 + "where status = 'Em Preparo'"; 
@@ -364,6 +372,7 @@ public class PedidosDAO {
                     pedido.setStatus(rs.getString("status"));
                     pedido.setObservacoes(rs.getString("observacoes"));
                     pedido.setFormapagamento(rs.getString("forma_pagamento"));
+                    pedido.setPagamentoPedido(rs.getString("pedido_pagamento"));
                     pedido.setTotalPedido(rs.getDouble("total"));
 
                     pedido.setClientepedido(cliente); 
@@ -395,13 +404,14 @@ public class PedidosDAO {
 
            sql = "SELECT "
                    + "ped.id_pedido as codigo_pedido, "
-           		+ "ped.total_pedido as total, "
-                   + "cli.nome as nome_cliente, "
-                   + "ped.clientepedido_id as codigo_cliente, "
-                   + "DATE_FORMAT(ped.data_pedido, '%d/%m/%Y %H:%i:%s') AS data_formatada, "
-                   + "ped.status as status, "
-                   + "ped.observacoes as observacoes, "
-                   + "ped.forma_pagamento as forma_pagamento "
+            		+ "ped.total_pedido as total, "
+                    + "cli.nome as nome_cliente, "
+                    + "ped.clientepedido_id as codigo_cliente, "
+                    + "DATE_FORMAT(ped.data_pedido, '%d/%m/%Y %H:%i:%s') AS data_formatada, "
+                    + "ped.status as status, "
+                    + "ped.observacoes as observacoes, "
+                    + "ped.forma_pagamento as forma_pagamento, "
+                    + "ped.pagamentoPedido as pedido_pagamento "
                    + "FROM pedidos as ped "
                    + "INNER JOIN tb_cliente_pedido as cli ON cli.id = ped.clientepedido_id "
                    + "where status = 'Reprovado'"; 
@@ -423,6 +433,7 @@ public class PedidosDAO {
                        pedido.setStatus(rs.getString("status"));
                        pedido.setObservacoes(rs.getString("observacoes"));
                        pedido.setFormapagamento(rs.getString("forma_pagamento"));
+                       pedido.setPagamentoPedido(rs.getString("pedido_pagamento"));
                        pedido.setTotalPedido(rs.getDouble("total"));
 
                        pedido.setClientepedido(cliente); 
@@ -461,7 +472,8 @@ public class PedidosDAO {
                 + "DATE_FORMAT(ped.data_pedido, '%d/%m/%Y %H:%i:%s') AS data_formatada, "
                 + "ped.status as status, "
                 + "ped.observacoes as observacoes, "
-                + "ped.forma_pagamento as forma_pagamento "
+                + "ped.forma_pagamento as forma_pagamento, "
+                + "ped.pagamentoPedido as pedido_pagamento "
                 + "FROM pedidos as ped "
                 + "INNER JOIN tb_cliente_pedido as cli ON cli.id = ped.clientepedido_id "
                 + "where status = 'Em Rota de Entrega'"; 
@@ -483,6 +495,7 @@ public class PedidosDAO {
                     pedido.setStatus(rs.getString("status"));
                     pedido.setObservacoes(rs.getString("observacoes"));
                     pedido.setFormapagamento(rs.getString("forma_pagamento"));
+                    pedido.setPagamentoPedido(rs.getString("pedido_pagamento"));
                     pedido.setTotalPedido(rs.getDouble("total"));
 
                     pedido.setClientepedido(cliente); 
@@ -520,7 +533,8 @@ public class PedidosDAO {
                 + "DATE_FORMAT(ped.data_pedido, '%d/%m/%Y %H:%i:%s') AS data_formatada, "
                 + "ped.status as status, "
                 + "ped.observacoes as observacoes, "
-                + "ped.forma_pagamento as forma_pagamento "
+                + "ped.forma_pagamento as forma_pagamento, "
+                + "ped.pagamentoPedido as pedido_pagamento "
                 + "FROM pedidos as ped "
                 + "INNER JOIN tb_cliente_pedido as cli ON cli.id = ped.clientepedido_id "
                 + "where status = 'Pendente' "; 
@@ -542,6 +556,7 @@ public class PedidosDAO {
                     pedido.setStatus(rs.getString("status"));
                     pedido.setObservacoes(rs.getString("observacoes"));
                     pedido.setFormapagamento(rs.getString("forma_pagamento"));
+                    pedido.setPagamentoPedido(rs.getString("pedido_pagamento"));
                     pedido.setTotalPedido(rs.getDouble("total"));
 
                     pedido.setClientepedido(cliente); 
@@ -579,7 +594,8 @@ public class PedidosDAO {
                 + "DATE_FORMAT(ped.data_pedido, '%d/%m/%Y %H:%i:%s') AS data_formatada, "
                 + "ped.status as status, "
                 + "ped.observacoes as observacoes, "
-                + "ped.forma_pagamento as forma_pagamento "
+                + "ped.forma_pagamento as forma_pagamento, "
+                + "ped.pagamentoPedido as pedido_pagamento "
                 + "FROM pedidos as ped "
                 + "INNER JOIN tb_cliente_pedido as cli ON cli.id = ped.clientepedido_id "; 
 
@@ -600,6 +616,7 @@ public class PedidosDAO {
                     pedido.setStatus(rs.getString("status"));
                     pedido.setObservacoes(rs.getString("observacoes"));
                     pedido.setFormapagamento(rs.getString("forma_pagamento"));
+                    pedido.setPagamentoPedido(rs.getString("pedido_pagamento"));
                     pedido.setTotalPedido(rs.getDouble("total"));
 
                     pedido.setClientepedido(cliente); 
@@ -701,21 +718,41 @@ public class PedidosDAO {
 	    return valorPedido;
 	}
     public boolean atualizarPedidoOnline(int idPedido, Pedidos pedido) {
-        String sql = "UPDATE pedidos SET pagamentoPedido = ?, referenciaPedido = ?, pagamentoTotalPedidoOnline = ? WHERE id_pedido = ?";
+        String sql = "UPDATE pedidos SET pagamentoPedido = ?, referenciaPedido = ?, pgTotalPedidoOnline = ? WHERE id_pedido = ?";
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
-            stmt.setString(1, pedido.getReferecialPedido());
+            stmt.setString(1, pedido.getPagamentoPedido());
             if (pedido.getReferecialPedido() != null) {
-                stmt.setBigDecimal(2, pedido.getPgTotalPedidoOnline());
+                stmt.setString(2, pedido.getReferecialPedido());
             } else {
                 stmt.setNull(2, java.sql.Types.DECIMAL);
             }
-            stmt.setString(3, pedido.getReferecialPedido());
+            stmt.setBigDecimal(3, pedido.getPgTotalPedidoOnline());
             stmt.setInt(4, idPedido);
 
             int rows = stmt.executeUpdate();
             return rows > 0;
         } catch (SQLException e) {
             System.err.println("Erro ao atualizar venda online: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
+    public boolean atualizarPedidoOnlineStatus(String externalReference, String novoStatus) {
+        String sql = "UPDATE pedidos SET pagamentoPedido = ?, referenciaPedido = ?, pgTotalPedidoOnline = ? WHERE id_pedido = ?";
+        try (PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setString(1, novoStatus);
+            stmt.setString(2, externalReference);
+            int rows = stmt.executeUpdate();
+            if (rows == 0) {
+                System.err.println("Nenhuma pedido encontrada com externalReference " + externalReference);
+            } else {
+                System.out.println("Status do pedido " + externalReference + " atualizado para " + novoStatus);
+                return true;
+            }
+            return rows > 0;
+        } catch (SQLException e) {
+            System.err.println("Erro ao atualizar pedido online: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -741,5 +778,18 @@ public class PedidosDAO {
 	    System.out.println(sql);
 	    return null;
 	}
+	 public String consultarStatusPedido(int PedidoId) {
+	        String sql = "SELECT pagamentoPedido FROM pedidos WHERE id = ?";
+	        try (PreparedStatement stmt = con.prepareStatement(sql)) {
+	            stmt.setInt(1, PedidoId);
+	            ResultSet rs = stmt.executeQuery();
+	            if (rs.next()) {
+	                return rs.getString("pagamentoPedido");
+	            }
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	        }
+	        return "pendente";
+	    }
 
 }

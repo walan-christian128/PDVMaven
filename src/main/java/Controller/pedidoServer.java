@@ -947,10 +947,10 @@ public class pedidoServer extends HttpServlet {
 						return;
 					}
 
-					System.out.println("URL de notificação a ser enviada para o Mercado Pago: " + ngrokBaseUrl + "/PDVVenda/mercadopago-webhook");
+					System.out.println("URL de notificação a ser enviada para o Mercado Pago: " + ngrokBaseUrl + "/PDVVenda/mercadopago-webhook-pedido");
 
 					PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
-							.success(ngrokBaseUrl + "/PDVVenda/pagamento-sucesso")
+							.success(ngrokBaseUrl + "/PDVVenda/pagamento-sucesso-Pedido")
 							.failure(ngrokBaseUrl + "/PDVVenda/pagamento-falhou")
 							.pending(ngrokBaseUrl + "/PDVVenda/pagamento-pendente")
 							.build();
@@ -966,7 +966,7 @@ public class pedidoServer extends HttpServlet {
 							.backUrls(backUrls)
 							.payer(payer)
 							.autoReturn("approved")
-							.notificationUrl(ngrokBaseUrl + "/PDVVenda/mercadopago-webhook")
+							.notificationUrl(ngrokBaseUrl + "/PDVVenda/mercadopago-webhook-pedido")
 							.build();
 
 					Preference pref = client.create(prefRequest);
@@ -979,7 +979,7 @@ public class pedidoServer extends HttpServlet {
 					request.setAttribute("emailCliente", request.getParameter("emailCliente"));
 
 					// Redireciona para o checkout do MP. O relatório NÃO é gerado agora.
-					request.getRequestDispatcher("checkout.jsp").forward(request, response);
+					request.getRequestDispatcher("checkoutPedido.jsp").forward(request, response);
 
 					return;
 

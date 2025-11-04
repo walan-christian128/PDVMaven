@@ -1,13 +1,13 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ page import="DAO.VendasDAO" %>
+<%@ page import="DAO.PedidosDAO" %>
 
 <%
     // Obtém o external_reference enviado pelo Mercado Pago
     String externalReference = request.getParameter("external_reference");
 
     String empresa = null;
-    int vendaId = 0;
-    String statusDaVenda = "unknown"; // padrão
+    int PedidoId = 0;
+    String statuspedido= "unknown"; // padrão
 
     if (externalReference != null && !externalReference.isEmpty()) {
         try {
@@ -15,14 +15,14 @@
             String[] partes = externalReference.split("_");
             if (partes.length == 2) {
                 empresa = partes[0];
-                vendaId = Integer.parseInt(partes[1]);
+                PedidoId = Integer.parseInt(partes[1]);
 
-                VendasDAO dao = new VendasDAO(empresa);
-                statusDaVenda = dao.consultarStatusVenda(vendaId); // retorna approved/pending/rejected
+                PedidosDAO dao = new PedidosDAO(empresa);
+                statuspedido = dao.consultarStatusPedido(PedidoId); // retorna approved/pending/rejected
             }
         } catch (Exception e) {
             e.printStackTrace();
-            statusDaVenda = "error";
+            statuspedido = "error";
         }
     }
 %>
@@ -116,13 +116,13 @@
         .status-rejected { border-left: 5px solid var(--rejected-color); }
     </style>
 </head>
-<body class="<%= "status-" + statusDaVenda.toLowerCase() %>"style="background-image: url('img/Gemini_Generated_Image_97a36f97a36f97a3.jpg'); background-size: auto auto; background-position: center; margin: 0; padding: 0; height: 100vh; width: 100vw;">
+<body class="<%= "status-" + statuspedido.toLowerCase() %>"style="background-image: url('img/Gemini_Generated_Image_97a36f97a36f97a3.jpg'); background-size: auto auto; background-position: center; margin: 0; padding: 0; height: 100vh; width: 100vw;">
     <div class="container">
-        <% if ("approved".equalsIgnoreCase(statusDaVenda)) { %>
+        <% if ("approved".equalsIgnoreCase(statuspedido)) { %>
             <div class="status-icon icon-approved">&#10003;</div>
             <h1>Pagamento Aprovado!</h1>
             <p>Obrigado por sua compra. Seu pedido foi confirmado e será processado em breve.</p>
-        <% } else if ("pending".equalsIgnoreCase(statusDaVenda)) { %>
+        <% } else if ("pending".equalsIgnoreCase(statuspedido)) { %>
             <div class="status-icon icon-pending">&#9203;</div>
             <h1>Seu Pagamento Está Pendente</h1>
             <p>Aguardando a confirmação do banco ou processamento da transação. Esta página será atualizada automaticamente.</p>
@@ -132,7 +132,7 @@
             <meta http-equiv="refresh" content="5" >
         <% } else { %>
             <div class="status-icon icon-rejected">&#10007;</div>
-            <h1>Status do Pagamento: <%= statusDaVenda.toUpperCase() %></h1>
+            <h1>Status do Pagamento: <%= statuspedido.toUpperCase() %></h1>
             <p>Não foi possível confirmar o seu pagamento. Por favor, tente novamente ou entre em contato com o suporte.</p>
         <% } %>
     </div>
