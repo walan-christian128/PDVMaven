@@ -654,7 +654,8 @@ public class pedidoServer extends HttpServlet {
 	private void listarPedidosCliente(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException, ClassNotFoundException, SQLException {
 
-		response.setContentType("text/html; charset=UTF-8");
+
+
 
 		PrintWriter out = response.getWriter();
 
@@ -734,7 +735,7 @@ public class pedidoServer extends HttpServlet {
 
 				if (pedido.getObservacoes() != null && !pedido.getObservacoes().isEmpty()) {
 
-					out.println("<p class=\"card-text mb-1\">Observações: " + pedido.getObservacoes() + "</p>");
+					out.println("<p class=\"card-text mb-1\">Observações : " + pedido.getObservacoes() + "</p>");
 
 				}
 

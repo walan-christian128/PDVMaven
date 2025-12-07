@@ -142,26 +142,7 @@ for (HorarioFuncionamento hf : horariosEmpresaModal) {
                 </li>
                 
                 <%-- ACORDEÃO para Histórico de Vendas --%>
-                <li class="nav-item">
-                    <a class="nav-link active collapsed" data-bs-toggle="collapse" href="#collapseHistorico" role="button" aria-expanded="false" aria-controls="collapseHistorico">
-                        <span class="icon"><i class="bi bi-clock-history"></i></span> <span class="txt-link">Histórico de Vendas</span>
-                        <i class="bi bi-chevron-down ms-auto"></i> 
-                    </a>
-                    <div class="collapse" id="collapseHistorico" data-bs-parent="#offcanvasMenu .navbar-nav">
-                        <ul class="navbar-nav ms-4"> 
-                            <li class="nav-item">
-                                <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#modalVendasPeriodo">Vendas por Período</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#modalVendasDia">Vendas por Dia</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#modalMaisVendidos">Produtos Mais Vendidos</a>
-                            </li>
-                        </ul>
-                    </div>
-                </li>
-                
+              
                 <li class="nav-item">
                     <a class="nav-link active" href="Clientes.jsp">
                         <span class="icon"><i class="bi bi-person-fill"></i></span> <span class="txt-link">Clientes</span>
@@ -192,6 +173,17 @@ for (HorarioFuncionamento hf : horariosEmpresaModal) {
                             <li class="nav-item">
                                 <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#modalLucroPeriodo">Lucro por Período</a>
                             </li>
+                           
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#modalVendasPeriodo">Vendas por Período</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#modalVendasDia">Vendas por Dia</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#modalMaisVendidos">Produtos Mais Vendidos</a>
+                            </li>
+                    
                         </ul>
                     </div>
                 </li>
@@ -357,11 +349,21 @@ for (HorarioFuncionamento hf : horariosEmpresaModal) {
                             <label for="dataInputDia" class="form-label">Data:</label>
                             <input type="text" id="dataInputDia" class="form-control" name="data" required placeholder="DD/MM/AAAA" value="<%=data%>">
                         </div>
-                        <div class="mb-3">
-                            <label for="totalVendaInput" class="form-label">Total:</label>
-                            <input type="text" id="totalVendaInput" class="form-control" name="totalVenda" value="<%=totalVenda%>" readonly>
-                        </div>
-                        <div class="d-flex justify-content-end gap-2 mt-3">
+						<div class="mb-3">
+							<label for="totalVendaInput" class="form-label">Total:</label>
+							<%
+							double total = 0.0;
+							if (totalVenda != null && !totalVenda.trim().isEmpty()) {
+								total = Double.parseDouble(totalVenda);
+							}
+							%>
+							<input type="text" id="totalVendaInput" class="form-control"
+								name="totalVenda"
+								value="R$ <%=String.format("%.2f", total).replace('.', ',')%>"
+								readonly>
+
+						</div>
+						<div class="d-flex justify-content-end gap-2 mt-3">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
                             <button type="submit" class="btn btn-primary">Buscar</button>
                         </div>

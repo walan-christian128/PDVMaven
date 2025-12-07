@@ -280,39 +280,58 @@ public class VendasDAO {
 	        return lista;
 	    }
 
-	public List<Vendas> totalPorPeriodo(Date data_inicio, Date data_fim) {
-		List<Vendas> lista = new ArrayList<>();
-		String sql = "SELECT SUM(total_venda) AS total_periodo, DATE_FORMAT(data_venda, '%d/%m/%Y') AS data_formatada "
-				+ "FROM tb_vendas " + "WHERE data_venda BETWEEN ? AND ? " + "GROUP BY data_formatada";
+	 public List<Vendas> totalPorPeriodo(Date data_inicio, Date data_fim) {
+		    List<Vendas> lista = new ArrayList<>();
+		    String sql = "SELECT SUM(total) AS total_periodo, data_formatada " +
+		                "FROM ( " +
+		                "    SELECT total_venda AS total, DATE_FORMAT(data_venda, '%d/%m/%Y') AS data_formatada " +
+		                "    FROM tb_vendas " +
+		                "    WHERE data_venda BETWEEN ? AND ? " +
+		                "    UNION ALL " +
+		                "    SELECT total_pedido AS total, DATE_FORMAT(data_pedido, '%d/%m/%Y') AS data_formatada " +
+		                "    FROM pedidos " +
+		                "    WHERE data_pedido BETWEEN ? AND ? " +
+		                ") AS combined_data " +
+		                "GROUP BY data_formatada " +
+		                "ORDER BY STR_TO_DATE(data_formatada, '%d/%m/%Y')";
 
-		try (PreparedStatement stmt = con.prepareStatement(sql)) {
-			// Usar setDate para datas
-			stmt.setDate(1, new java.sql.Date(data_inicio.getTime()));
-			stmt.setDate(2, new java.sql.Date(data_fim.getTime()));
+		    try (PreparedStatement stmt = con.prepareStatement(sql)) {
+		        stmt.setDate(1, new java.sql.Date(data_inicio.getTime()));
+		        stmt.setDate(2, new java.sql.Date(data_fim.getTime()));
+		        stmt.setDate(3, new java.sql.Date(data_inicio.getTime()));
+		        stmt.setDate(4, new java.sql.Date(data_fim.getTime()));
 
-			try (ResultSet rs = stmt.executeQuery()) {
-				while (rs.next()) {
-					Vendas obj = new Vendas();
-					obj.setData_venda(rs.getString("data_formatada"));
-					obj.setTotal_venda(rs.getDouble("total_periodo"));
-					lista.add(obj); // Adicionar o objeto à lista
-				}
-			}
-		} catch (SQLException e) {
-			e.printStackTrace();
-			System.out.println("Erro: " + e.getMessage());
+		        try (ResultSet rs = stmt.executeQuery()) {
+		            while (rs.next()) {
+		                Vendas obj = new Vendas();
+		                obj.setData_venda(rs.getString("data_formatada"));
+		                obj.setTotal_venda(rs.getDouble("total_periodo"));
+		                lista.add(obj);
+		            }
+		        }
+		    } catch (SQLException e) {
+		        e.printStackTrace();
+		        System.out.println("Erro: " + e.getMessage());
+		    }
+
+		    return lista;
 		}
-
-		return lista; // Retorna a lista preenchida
-	}
 
 	// Metodo que calcula total da vendaa por data//
 	public double retornaTotalVendaPorData(Date data_venda) {
 	    try {
 	        double totalvenda = 0;
-	        String sql = "SELECT SUM(total_venda) as total FROM tb_vendas WHERE DATE_FORMAT(data_venda, '%d/%m/%Y') = ?";
+	        
+	        // Converter java.util.Date para java.sql.Date
+	        java.sql.Date sqlDate = new java.sql.Date(data_venda.getTime());
+	        
+	        String sql = "SELECT " +
+	                    "    (SELECT COALESCE(SUM(total_venda), 0) FROM tb_vendas WHERE DATE(data_venda) = ?) + " +
+	                    "    (SELECT COALESCE(SUM(total_pedido), 0) FROM pedidos WHERE DATE(data_pedido) = ?) as total";
+	        
 	        PreparedStatement ps = con.prepareStatement(sql);
-	        ps.setString(1, new SimpleDateFormat("dd/MM/yyyy").format(data_venda));
+	        ps.setDate(1, sqlDate);
+	        ps.setDate(2, sqlDate);
 
 	        ResultSet rs = ps.executeQuery();
 
@@ -329,29 +348,31 @@ public class VendasDAO {
 
 
 	public double retornaTotalVendaPorDia(LocalDate data_venda) {
-		try {
-			double totalvenda = 0;
+	    try {
+	        double totalvenda = 0;
 
-			String sql = "SELECT SUM(total_venda) as total FROM tb_vendas WHERE DATE(data_venda) = ?";
+	        String sql = "SELECT SUM(total) as total " +
+	                    "FROM ( " +
+	                    "    SELECT total_venda as total FROM tb_vendas WHERE DATE(data_venda) = ? " +
+	                    "    UNION ALL " +
+	                    "    SELECT total_pedido as total FROM pedidos WHERE DATE(data_pedido) = ? " +
+	                    ") as combined_totals";
 
-			PreparedStatement ps = con.prepareStatement(sql);
-			ps.setString(1, data_venda.toString());
+	        PreparedStatement ps = con.prepareStatement(sql);
+	        ps.setString(1, data_venda.toString());
+	        ps.setString(2, data_venda.toString()); // mesmo parâmetro repetido
 
-			ResultSet rs = ps.executeQuery();
+	        ResultSet rs = ps.executeQuery();
 
-			if (rs.next()) {
+	        if (rs.next()) {
+	            totalvenda = rs.getDouble("total");
+	        }
 
-				totalvenda = rs.getDouble("total");
+	        return totalvenda;
 
-			}
-
-			return totalvenda;
-
-		} catch (SQLException e) {
-			throw new RuntimeException(e);
-
-		}
-
+	    } catch (SQLException e) {
+	        throw new RuntimeException(e);
+	    }
 	}
 
 	public void selVendas(String cpf, int idprod) {
@@ -389,47 +410,64 @@ public class VendasDAO {
 
 	}
 	public List<ItensVenda> maisVendidos(Date dataInicio, Date dataFim){
-		List<ItensVenda> lista = new ArrayList<>();
+	    List<ItensVenda> lista = new ArrayList<>();
 
-		try {
-			String sql =" SELECT DISTINCT "
-					+ " SUM(ITENS.QTD)AS QUANTIDADE, "
-					+ " PRODUTO.DESCRICAO "
-					+ " FROM TB_ITENSVENDAS AS ITENS "
-					+ " INNER JOIN TB_PRODUTOS AS PRODUTO ON PRODUTO.ID = ITENS.PRODUTO_ID "
-					+ " INNER JOIN TB_VENDAS AS VENDAS  ON ITENS.VENDA_ID = VENDAS.ID "
-					+ " WHERE  DATE(VENDAS.DATA_VENDA)  BETWEEN? AND? "
-					+ " GROUP BY PRODUTO.DESCRICAO "
-					+ " ORDER BY QUANTIDADE DESC ";
+	    try {
+	    	String sql = """
+	                SELECT 
+	                    SUM(QUANTIDADE) AS QUANTIDADE_TOTAL, 
+	                    SUM(QUANTIDADE_VENDAS) AS QUANTIDADE_VENDAS, 
+	                    SUM(QUANTIDADE_PEDIDOS) AS QUANTIDADE_PEDIDOS, 
+	                    DESCRICAO 
+	                FROM ( 
+	                    -- Vendas 
+	                    SELECT 
+	                        ITENS.QTD AS QUANTIDADE, 
+	                        ITENS.QTD AS QUANTIDADE_VENDAS, 
+	                        0 AS QUANTIDADE_PEDIDOS, 
+	                        PRODUTO.DESCRICAO 
+	                    FROM TB_ITENSVENDAS AS ITENS 
+	                    INNER JOIN TB_PRODUTOS AS PRODUTO ON PRODUTO.ID = ITENS.PRODUTO_ID 
+	                    INNER JOIN TB_VENDAS AS VENDAS ON ITENS.VENDA_ID = VENDAS.ID 
+	                    WHERE DATE(VENDAS.DATA_VENDA) BETWEEN ? AND ? 
+	                    UNION ALL 
+	                    -- Pedidos 
+	                    SELECT 
+	                        PEDIDOS.QUANTIDADE AS QUANTIDADE, 
+	                        0 AS QUANTIDADE_VENDAS, 
+	                        PEDIDOS.QUANTIDADE AS QUANTIDADE_PEDIDOS, 
+	                        PRODUTO.DESCRICAO 
+	                    FROM ITENS_PEDIDO AS PEDIDOS 
+	                    INNER JOIN TB_PRODUTOS AS PRODUTO ON PRODUTO.ID = PEDIDOS.PRODUTO_ID 
+	                    INNER JOIN PEDIDOS AS PED ON PEDIDOS.PEDIDO_ID = PED.ID_PEDIDO 
+	                    WHERE DATE(PED.DATA_PEDIDO) BETWEEN ? AND ? 
+	                ) AS combined_data 
+	                GROUP BY DESCRICAO 
+	                ORDER BY QUANTIDADE_TOTAL DESC
+	                """;
 
-			PreparedStatement stmt = con.prepareStatement(sql);
-			stmt.setDate(1, new java.sql.Date(dataInicio.getTime()));
-			stmt.setDate(2, new java.sql.Date(dataFim.getTime()));
+	        PreparedStatement stmt = con.prepareStatement(sql);
+	        stmt.setDate(1, new java.sql.Date(dataInicio.getTime()));
+	        stmt.setDate(2, new java.sql.Date(dataFim.getTime()));
+	        stmt.setDate(3, new java.sql.Date(dataInicio.getTime()));
+	        stmt.setDate(4, new java.sql.Date(dataFim.getTime()));
 
-			ResultSet rs = stmt.executeQuery();
-			 while(rs.next()){
-				 Produtos produtos = new Produtos();
-				 ItensVenda itesnvenda = new ItensVenda();
+	        ResultSet rs = stmt.executeQuery();
+	        while(rs.next()){
+	            Produtos produtos = new Produtos();
+	            ItensVenda itensvenda = new ItensVenda();
 
-				 itesnvenda.setQtd(rs.getInt("QUANTIDADE"));
-				 produtos.setDescricao(rs.getString("DESCRICAO"));
+	            itensvenda.setQtd(rs.getInt("QUANTIDADE_TOTAL"));
+	            produtos.setDescricao(rs.getString("DESCRICAO"));
 
-				 itesnvenda.setProduto(produtos);
+	            itensvenda.setProduto(produtos);
+	            lista.add(itensvenda);
+	        }
 
-
-				 lista.add(itesnvenda);
-
-
-
-
-			 }
-
-
-		} catch (SQLException e) {
-
-		}
-		return lista;
-
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    }
+	    return lista;
 	}
 	public double lucroVenda(int id) {
 	    double totalVenda = 0;

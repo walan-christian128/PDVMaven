@@ -330,7 +330,7 @@ td a {
 </script>
 <script>
 $(document).ready(function() {
-    $("#cep").on("keypress", function(e) {
+    $("#cepPedido").on("keypress", function(e) {
         if (e.which == 13) {  // Verifica se a tecla pressionada é Enter
             e.preventDefault(); // Previne o comportamento padrão de envio do formulário
 

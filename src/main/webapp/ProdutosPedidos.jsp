@@ -24,7 +24,7 @@ prodp = daop.listarProdutosPedido(); // Atribui o resultado da busca à lista ex
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Produtos para pedidos</title>
 <link rel="icon" href="img/pedido-online.png">

@@ -859,7 +859,7 @@ NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("pt", 
 				</div>
 			</div>
 
-			<form action="atualizaPedido" method="post">
+			<form action="AtualizarStatusPedido" method="post">
 				<div class="modal-footer">
 					<input type="hidden" name="acao" value="pedido">
 					<input type="hidden" name="idPedido" id="formIdPedido">

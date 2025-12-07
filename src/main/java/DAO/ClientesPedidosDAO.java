@@ -51,6 +51,9 @@ public class ClientesPedidosDAO {
 	            return false;
 	        }
 	    }
+	   
+
+
 	    public boolean enviarEmailCliente(String email) {
 	        String sql = "select * from tb_cliente_pedido where email = ?";
 	        boolean clienteEmail = false;

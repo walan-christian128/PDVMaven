@@ -166,6 +166,9 @@ public class createData {
                     "desconto decimal (10,2)DEFAULT NULL,"+
                     "forma_pagamento varchar(200),"+
                     "idUsuario int DEFAULT NULL,"+
+                    "statusVenda varchar(500), " + 
+                    "external_reference varchar(500), "+
+                    "pgTotalOnline decimal(10,2), "+
                     "PRIMARY KEY (id)," +
                     "KEY cliente_id (cliente_id)," +
                     "CONSTRAINT tb_vendas_ibfk_1 FOREIGN KEY (cliente_id) REFERENCES tb_clientes (id)" +
@@ -231,11 +234,12 @@ public class createData {
             		+ "  `telefone` varchar(100) DEFAULT NULL, "
             		+ "  `endereco` varchar(100) DEFAULT NULL, "
             		+ "  `numero` varchar(100) DEFAULT NULL, "
+            		+ "  `cepPedido` varchar(100)DEFAULT NULL, "
             		+ "  `bairro` varchar(100) DEFAULT NULL, "
             		+ "  `cidade` varchar(100) DEFAULT NULL, "
             		+ "  `estado` varchar(100) DEFAULT NULL, "
-            		+ "  `email` varchar(100) DEFAULT NULL, "
-            		+ "  `senha` varchar(100) DEFAULT NULL, "
+            		+ "  `email`  varchar(100) DEFAULT NULL, "
+            		+ "  `senha`  varchar(100) DEFAULT NULL, "
             		+ "  PRIMARY KEY (`id`) "
             		+ ")";
             
@@ -250,6 +254,9 @@ public class createData {
             		+ "  `forma_pagamento` varchar(100) DEFAULT NULL, "
             		+ "  `total_pedido` decimal(10,2) DEFAULT NULL, "
             		+ "  `empresa_id` int DEFAULT NULL,"
+            		+ "  `pagamentoPedido` varchar(100), "
+            		+ "  `referencialPedido` varchar(100), "
+            		+ "  `pgTotalPedidoOnline` decimal(10,2), "
             		+ "  PRIMARY KEY (`id_pedido`), "
             		+ "  KEY `clientepedido_id` (`clientepedido_id`), "
             		+ "  KEY `fk_pedidos_empresa` (`empresa_id`),"

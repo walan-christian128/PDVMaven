@@ -127,7 +127,7 @@ body {
       </div>
       <div class="col-md-4 mb-3">
         <label class="form-label">CEP:</label>
-        <input type="text" class="form-control" id="cepPedido" name="cepPedido" placeholder="00000-000" required>
+        <input type="text" class="form-control" id="cepPedido" name="cepPedido" placeholder=" presione enter para busca automatica do CEP 00000-000" required>
       </div>
       <div class="col-md-4 mb-3">
         <label class="form-label">Bairro:</label>
@@ -263,18 +263,35 @@ $(function() {
   $('#cepPedido').mask('00000-000');
 
   // ViaCEP
-  $('#cepPedido').on('blur', function() {
-    const cep = $(this).val().replace(/\D/g, '');
-    if (cep.length !== 8) return;
-    $.getJSON(`https://viacep.com.br/ws/${cep}/json/`, dados => {
-      if (!dados.erro) {
-        $('#estado').val(dados.uf);
-        $('#cidade').val(dados.localidade);
-        $('#endereco').val(dados.logradouro);
-        $('#bairro').val(dados.bairro);
-      }
+$(document).ready(function() {
+    $("#cepPedido").on("keypress", function(e) {
+        if (e.which == 13) {  // Verifica se a tecla pressionada é Enter
+            e.preventDefault(); // Previne o comportamento padrão de envio do formulário
+
+            var numCep = $("#cepPedido").val().replace(".", "").replace("-", ""); // Remover formatação do CEP
+            var url = "https://viacep.com.br/ws/"+numCep+"/json";
+
+            console.log("CEP digitado: " + numCep);
+
+            $.ajax({
+                url: url,
+                type: "get",
+                dataType: "json",
+                success: function(dados) {
+                    console.log("Resposta da API:", dados);
+                    $("#estado").val(dados.uf);
+                    $("#cidade").val(dados.localidade);
+                    $("#endereco").val(dados.logradouro);
+                    $("#bairro").val(dados.bairro);
+                },
+                error: function(xhr, status, error) {
+                    console.log("Erro na solicitação AJAX:", error);
+                }
+            });
+        }
     });
-  });
+});
+
 
   // Validação
   $('#cadastroForm').on('submit', function(e) {

@@ -320,7 +320,11 @@ public class clientePedidoServer extends HttpServlet {
 
 	// Método para buscar cliente e retornar JSON para modal
     private void selecionarCliente(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    	request.setCharacterEncoding("UTF-8");
+    	
+    	response.setContentType("text/html;charset=UTF-8");
     	String idCli = request.getParameter("id");
+    	
         if (idCli != null) {
             try {
                 int cliId = Integer.parseInt(idCli);

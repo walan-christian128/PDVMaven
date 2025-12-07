@@ -693,7 +693,7 @@ public class PedidosDAO {
     }
 
     public void atualizarStatus(int idPedido, String novoStatus) throws SQLException {
-        String sql = "UPDATE pedidos SET status = ? WHERE idPedido = ?";
+        String sql = "UPDATE pedidos SET status = ? WHERE id_pedido = ?";
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setString(1, novoStatus);
             stmt.setInt(2, idPedido);
@@ -791,5 +791,39 @@ public class PedidosDAO {
 	        }
 	        return "pendente";
 	    }
+	 public Pedidos getDadosParaWhatsApp(int pedidoId) {
+	        try {
+	            String sql = "SELECT p.id_pedido AS pedido_id, p.status, c.nome, c.telefone " +
+	                         "FROM pedidos p " +
+	                         "inner JOIN tb_cliente_pedido c ON p.clientepedido_id = c.id " +
+	                         "WHERE p.id_pedido = ?";
+	            
+	            PreparedStatement stmt = con.prepareStatement(sql);
+	            stmt.setInt(1, pedidoId);
+
+	            ResultSet rs = stmt.executeQuery();
+
+	            if (rs.next()) {
+
+	                Pedidos ped = new Pedidos();
+	                Clientepedido cli = new Clientepedido();
+	                
+	                ped.setIdPedido(rs.getInt("pedido_id"));
+	                ped.setStatus(rs.getString("status"));
+
+	                cli.setNome(rs.getString("nome"));
+	                cli.setTelefone(rs.getString("telefone"));
+
+	                ped.setClientepedido(cli);
+
+	                return ped;
+	            }
+
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	        }
+	        return null;
+	    }
+
 
 }

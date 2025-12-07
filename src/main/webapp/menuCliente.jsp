@@ -407,15 +407,47 @@
         // =======================================================
         
         // 1. Máscara de Telefone/Celular (Flexível: 8 ou 9 dígitos + DDD)
-        var SPMaskBehavior = function (val) {
-          return val.replace(/\D/g, '').length === 11 ? '(00) 00000-0000' : '(00) 0000-00009';
-        },
-        spOptions = {
-          onKeyPress: function(val, e, field, options) {
-              field.mask(SPMaskBehavior.apply({}, arguments), options);
-            }
-        };
-        $('#telefoneCliente').mask(SPMaskBehavior, spOptions);
+ // 1. Definição da Máscara para telefone com 9º dígito, forçando 55 (Brasil) + DDD.
+// A Meta exige o formato E.164 (55 + DDD + Número), por isso é crucial que a máscara comece em 55.
+
+var SPMaskBehavior = function (val) {
+    // Força a máscara a aceitar 13 dígitos no total (55 + 2xDDD + 9xNúmero)
+    // Exemplo: 5531991815107 (13 dígitos)
+    return '0000000000000'; // Máscara para 55 XX 9XXXX-XXXX
+};
+
+var spOptions = {
+    onKeyPress: function(val, e, field, options) {
+        field.mask(SPMaskBehavior.apply({}, arguments), options);
+    },
+    // Garante que o usuário comece com 55 (código do Brasil)
+    // O valor '55' será inserido automaticamente
+    placeholder: "55 DDD 00000-0000" 
+};
+
+// Aplica a máscara no carregamento da página
+$(document).ready(function() {
+    $('#telefoneCliente').mask(SPMaskBehavior, spOptions);
+});
+
+// 2. Função de Limpeza ANTES de enviar ao Servlet
+
+// Adicione esta função ao evento de submissão do seu formulário 
+// (ou antes da chamada AJAX/Submit) para garantir que o número chegue limpo no Java.
+
+function limparTelefoneParaEnvio() {
+    var telefoneInput = $('#telefoneCliente');
+    var valorLimpo = telefoneInput.val().replace(/\D/g, ''); // Remove tudo que não for dígito
+
+    // A Meta exige 11 a 13 dígitos (55319xxxxxxx)
+    if (valorLimpo.length < 11) {
+        // Opcional: Tratar erro ou avisar o usuário que o formato está incompleto
+        console.error("Erro: Número de telefone incompleto. Requer no mínimo 11 dígitos (DDD + Número).");
+        return false; // Previne o envio se for muito curto
+    }
+
+    
+}
 
         // 2. Máscara de CEP
         $('#cepPedido').mask('00000-000');
