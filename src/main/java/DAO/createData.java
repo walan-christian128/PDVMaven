@@ -302,24 +302,28 @@ public class createData {
     }
 
     @SuppressWarnings("static-access")
-    public void inserirEmpresaUsuario(Empresa emp, Usuario uso, List<HorarioFuncionamento> horarios) throws SQLException {
+    public int inserirEmpresaUsuario(Empresa emp, Usuario uso, List<HorarioFuncionamento> horarios) throws SQLException {
+        
+        // Variável para armazenar o ID gerado, declarada fora do try para ser retornada
+        int empresaId = 0; 
+        
         if (this.con == null) {
             System.err.println("Erro: Conexão com o banco de dados não foi estabelecida.");
-            return;
+            // Retorna 0 (ou lança uma exceção customizada se preferir)
+            return 0; 
         }
 
         // Inicia a transação
         con.setAutoCommit(false);
 
         String sqlEmpresa = "INSERT INTO tb_empresa (nome, cnpj, endereco, logo) VALUES (?, ?, ?, ?)";
-        String sqlUsuario = "INSERT INTO tb_usuario (NOME, TELEFONE, EMAIL, SENHA, empresaID) VALUES (?, ?, ?, ?, ?)";
-        // Novo SQL para inserir horários de funcionamento
+        String sqlUsuario = "INSERT INTO tb_usuario (NOME, TELEFONE, EMAIL, SENHA, empresaID, nivel) VALUES (?, ?, ?, ?, ?, 'ADM')";
         String sqlHorario = "INSERT INTO tb_horarios_funcionamento (id_empresa, dia_semana, hora_abertura, hora_fechamento, aberto, observacao) VALUES (?, ?, ?, ?, ?, ?)";
 
         try (
             PreparedStatement stmtEmpresa = con.prepareStatement(sqlEmpresa, Statement.RETURN_GENERATED_KEYS);
             PreparedStatement stmtUsuario = con.prepareStatement(sqlUsuario);
-            PreparedStatement stmtHorario = con.prepareStatement(sqlHorario) // Novo PreparedStatement
+            PreparedStatement stmtHorario = con.prepareStatement(sqlHorario)
         ) {
             // Inserindo a empresa
             stmtEmpresa.setString(1, emp.getNome());
@@ -336,13 +340,12 @@ public class createData {
             stmtEmpresa.executeUpdate();
 
             // Obtendo o ID gerado da empresa
-            ResultSet rs = stmtEmpresa.getGeneratedKeys();
-            int empresaId = 0;
-            if (rs.next()) {
-                empresaId = rs.getInt(1);
+            try (ResultSet rs = stmtEmpresa.getGeneratedKeys()) {
+                if (rs.next()) {
+                    empresaId = rs.getInt(1); // Armazena o ID na variável declarada acima
+                }
             }
-            rs.close();
-
+            
             if (empresaId == 0) {
                  throw new SQLException("Não foi possível obter o ID gerado para a empresa.");
             }
@@ -351,8 +354,10 @@ public class createData {
             stmtUsuario.setString(1, uso.getNome());
             stmtUsuario.setString(2, uso.getTelefone());
             stmtUsuario.setString(3, uso.getEmail());
-            stmtUsuario.setString(4, PasswordUtil.hashPassword(uso.getSenha()));
-            stmtUsuario.setInt(5, empresaId); // Relacionando o usuário à empresa criada
+            // Assumindo que PasswordUtil.hashPassword está disponível
+            stmtUsuario.setString(4, PasswordUtil.hashPassword(uso.getSenha())); 
+            stmtUsuario.setInt(5, empresaId); 
+            stmtUsuario.setString(6, uso.getNivel());// Relacionando o usuário à empresa criada
 
             stmtUsuario.executeUpdate();
 
@@ -402,9 +407,8 @@ public class createData {
             // Retorna o auto-commit ao normal
             con.setAutoCommit(true);
         }
+        
+        // *** SOLUÇÃO DO SEU PROBLEMA: RETORNA O ID AQUI ***
+        return empresaId; 
     }
- // Seu método original, para retornar apenas a empresa
-   
-
-
 }

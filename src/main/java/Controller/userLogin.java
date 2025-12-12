@@ -2,7 +2,6 @@ package Controller;
 
 import java.io.IOException;
 
-import DAO.EmpresaDAO;
 import DAO.UsuarioDAO;
 import Model.Empresa;
 import Model.Usuario;
@@ -22,95 +21,135 @@ public class userLogin extends HttpServlet {
 
 	private static final long serialVersionUID = 1L;
 
-	/**
-	 * @see HttpServlet#HttpServlet()
-	 */
+	// --- VARIÁVEIS FIXAS DO MASTER DO SISTEMA ---
+	private static final String MASTER_EMAIL_FIXO = "dbawttech@gmail.com";
+	private static final String MASTER_SENHA_FIXA = "dbawttech@!"; // Substitua pela senha real
+	private static final String MASTER_NIVEL = "ROOT_MASTER";
+	// ---------------------------------------------
 
 	public userLogin() {
 		super();
-		// TODO Auto-generated constructor stub
 	}
 
-
-	/**
-	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse
-	 *      response)
-	 */
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		// TODO Auto-generated method stub
-
 		RequestDispatcher rd = request.getRequestDispatcher("Login.jsp");
 		rd.forward(request, response);
-		response.getWriter().append("Served at: ").append(request.getContextPath());
 	}
 
-	/**
-	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse
-	 *      response)
-	 */
 	@Override
-	@SuppressWarnings("unused")
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
-	        throws ServletException, IOException {
-	    String email = request.getParameter("email");
-	    String senha = request.getParameter("senha");
-	    String empresa = request.getParameter("empresa");
+			throws ServletException, IOException {
+		
+		String email = request.getParameter("email");
+		String senha = request.getParameter("senha");
+		String empresa = request.getParameter("empresa");
 
+		if (email == null || email.isEmpty() || senha == null || senha.isEmpty() || empresa == null || empresa.isEmpty()) {
+			request.setAttribute("erro", "Todos os campos devem ser preenchidos.");
+			RequestDispatcher rd = request.getRequestDispatcher("Login.jsp");
+			rd.forward(request, response);
+			return;
+		}
 
-	    if (email == null || email.isEmpty() || senha == null || senha.isEmpty() || empresa == null || empresa.isEmpty()) {
-	        request.setAttribute("erro", "Todos os campos devem ser preenchidos.");
-	        RequestDispatcher rd = request.getRequestDispatcher("Login.jsp");
-	        rd.forward(request, response);
-	        return;
-	    }
+		String nomeBase = empresa.trim().toLowerCase();
+		HttpSession session = request.getSession();
 
-	    HttpSession session = request.getSession();
-	    session.setAttribute("empresa", empresa);
+		// --- 1. TENTATIVA DE LOGIN DO MASTER FIXO ---
+		if (email.equals(MASTER_EMAIL_FIXO) && senha.equals(MASTER_SENHA_FIXA)) {
+			
+			try {
+				// Simplesmente tenta instanciar o DAO para verificar se a conexão/base existe
+				new UsuarioDAO(nomeBase); 
+				
+				// Se a conexão foi bem-sucedida (não lançou exceção)
+				
+				// Cria o objeto Usuário Master
+				Usuario master = new Usuario();
+				master.setEmail(MASTER_EMAIL_FIXO);
+				master.setNome("Master do Sistema");
+				master.setNivel(MASTER_NIVEL);
+				
+				// Cria o objeto Empresa que o Master está gerenciando
+				Empresa empMaster = new Empresa();
+				empMaster.setNome(nomeBase);
+				master.setEmpresa(empMaster);
 
-	    try {
-	        UsuarioDAO dao = new UsuarioDAO(empresa);
+				// Armazena na sessão
+				session.setAttribute("usuario", master);
+				session.setAttribute("empresa", nomeBase); 
+				
+				System.out.println("Master logado na base: " + nomeBase);
+				response.sendRedirect("Home.jsp");
+				return;
+				
+			} catch (Exception e) {
+				// Base não existe ou erro de conexão
+				request.setAttribute("erro", "Master: A base de dados '" + nomeBase + "' não existe ou ocorreu um erro de conexão.");
+				RequestDispatcher rd = request.getRequestDispatcher("Login.jsp");
+				rd.forward(request, response);
+				return;
+			}
+		} 
+		// FIM DA CHECAGEM DO MASTER FIXO
+		
+		// --- 2. LÓGICA DE LOGIN COMUM DO CLIENTE (MÉTODOS ORIGINAIS) ---
+		else {
+			UsuarioDAO dao;
+			try {
+				dao = new UsuarioDAO(nomeBase);
+				
+				// 🔹 Primeiro verifica se o login é válido
+				boolean loginValido = dao.efetuarLogin(email, senha, nomeBase);
+				if (!loginValido) {
+					request.setAttribute("erro", "Usuário, senha ou empresa incorretos.");
+					RequestDispatcher rd = request.getRequestDispatcher("Login.jsp");
+					rd.forward(request, response);
+					return;
+				}
 
-	        // 🔹 Primeiro verifica se o login é válido
-	        boolean loginValido = dao.efetuarLogin(email, senha, empresa);
-	        if (!loginValido) {
-	            request.setAttribute("erro", "Usuário, senha ou empresa incorretos.");
-	            RequestDispatcher rd = request.getRequestDispatcher("Login.jsp");
-	            rd.forward(request, response);
-	            return;
-	        }
+				// 🔹 Depois busca o ID do usuário (Método 1)
+				Usuario usuarioCredenciais = new Usuario();
+				usuarioCredenciais.setEmail(email);
+				usuarioCredenciais.setSenha(senha);
 
-	        // 🔹 Depois busca o ID do usuário
-	        Usuario usuarioObj = new Usuario();
-	        usuarioObj.setEmail(email);
-	        usuarioObj.setSenha(senha);
+				int usuarioID = dao.cidugoUsuario(usuarioCredenciais, nomeBase);
+				
+				if (usuarioID > 0) {
+					// 🔹 Busca o objeto Usuario COMPLETO (Método 2)
+					// *** CRÍTICO: Este método deve retornar o nível de acesso! ***
+					Usuario usuarioLogado = dao.retornUser(usuarioCredenciais, nomeBase, usuarioID); 
 
-	        int usuarioID = dao.cidugoUsuario(usuarioObj, empresa);
-	        Usuario nomeUser = dao.retornUser(usuarioObj, empresa, usuarioID);
-
-	        // 🔹 Aqui entra a busca do ID da empresa
-	        EmpresaDAO empresaDAO = new EmpresaDAO(empresa); // você precisa ter esse DAO
-	        int empresaId = 1;
-
-	        if (usuarioID > 0) {
-	            session.setAttribute("usuarioID", usuarioID);
-	            session.setAttribute("usuarioNome", nomeUser);
-	            session.setAttribute("empresaId", empresaId); // <-- AGORA O ID FICA NA SESSÃO
-	            System.out.println("Usuário logado: " + usuarioID + " | Empresa: " + empresaId);
-	            response.sendRedirect("Home.jsp");
-	        } else {
-	            request.setAttribute("erro", "Erro ao buscar ID do usuário.");
-	            RequestDispatcher rd = request.getRequestDispatcher("Login.jsp");
-	            rd.forward(request, response);
-	        }
-	    } catch (Exception e) {
-	        e.printStackTrace();
-	        request.setAttribute("erro", "Ocorreu um erro ao processar a solicitação.");
-	        RequestDispatcher rd = request.getRequestDispatcher("Login.jsp");
-	        rd.forward(request, response);
-	    }
+					if (usuarioLogado != null) {
+						
+						// SUBSTITUÍMOS as sessões parciais pela sessão do objeto completo
+						session.setAttribute("usuario", usuarioLogado);
+						session.setAttribute("empresa", nomeBase); 
+						
+						System.out.println("Usuário logado: " + usuarioLogado.getId() + " | Nível: " + usuarioLogado.getNivel());
+						
+						// Redireciona para a Home.jsp
+						response.sendRedirect("Home.jsp");
+						return;
+					} else {
+						request.setAttribute("erro", "Erro ao buscar dados completos do usuário.");
+						RequestDispatcher rd = request.getRequestDispatcher("Login.jsp");
+						rd.forward(request, response);
+					}
+					
+				} else {
+					request.setAttribute("erro", "Erro ao buscar ID do usuário.");
+					RequestDispatcher rd = request.getRequestDispatcher("Login.jsp");
+					rd.forward(request, response);
+				}
+				
+			} catch (Exception e) {
+				e.printStackTrace();
+				request.setAttribute("erro", "Ocorreu um erro ao processar a solicitação (Verifique se a base existe).");
+				RequestDispatcher rd = request.getRequestDispatcher("Login.jsp");
+				rd.forward(request, response);
+			}
+		}
 	}
-
-
 }

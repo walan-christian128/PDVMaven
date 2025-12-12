@@ -1,14 +1,11 @@
 package DAO;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-
-import javax.naming.NamingException;
-
+import javax.naming.NamingException; // Mantido para compatibilidade, se necessário
 import Conexao.ConectionDataBases;
 import Model.Clientepedido;
 import Model.Empresa;
@@ -17,369 +14,341 @@ import Model.Usuario;
 
 public class UsuarioDAO {
 
+	// Conexão principal para operações DML/Query após o login
 	private Connection con;
-	private ConectionDataBases connectionFactory;
 
-	public UsuarioDAO(String databaseName) throws NamingException {
-		this.connectionFactory = new ConectionDataBases(databaseName);
+	// O construtor é a única parte que se conecta ao banco específico.
+	public UsuarioDAO(String databaseName) throws Exception {
+		ConectionDataBases connectionFactory = new ConectionDataBases(databaseName);
 		try {
+			// A conexão para este DAO é estabelecida aqui.
 			this.con = connectionFactory.getConectionDataBases();
 		} catch (SQLException e) {
-			e.printStackTrace(); // Trate a exceção conforme necessário
+			// CORREÇÃO CRÍTICA: Se a conexão falhar (ex: No suitable driver found, Bad credentials, etc.),
+			// lançamos uma exceção clara para o Servlet/JSP, impedindo NullPointerException.
+			System.err.println("ERRO DAO: Falha ao obter conexão para a base " + databaseName);
+			e.printStackTrace();
+			// Relançar como uma exceção mais genérica para o nível superior
+			throw new Exception("Erro de conexão com o banco de dados. Detalhes: " + e.getMessage(), e);
 		}
 	}
-
+    
+    // =========================================================
+	// MÉTODO: efetuarLogin (MÉTODO EXCEÇÃO)
+	// Precisa conectar-se à URL MESTRE e usar o comando 'USE <empresa>'
+	// =========================================================
 	@SuppressWarnings("static-access")
-	public boolean efetuarLogin(String usuario, String senha, String empresa) throws ClassNotFoundException {
-		Class.forName("com.mysql.cj.jdbc.Driver");
-		Connection con = null;
-		PreparedStatement stmt = null;
-		ResultSet rs = null;
+	public boolean efetuarLogin(String usuario, String senha, String empresa) throws SQLException {
+		
+		Connection conLogin = null; // Conexão temporária para o login
 		boolean loginValido = false;
-
+        
+        // NOTA: Class.forName("com.mysql.cj.jdbc.Driver"); é desnecessário no JDBC 4+, 
+        // mas mantido a lógica para criar uma nova conexão para o comando USE.
+        
 		try {
-
-			// Conectar ao MySQL sem especificar um banco de dados
-			con = DriverManager.getConnection("jdbc:mysql://localhost:3306/", "walan", "359483wa@");
-
-			// Usar o banco de dados dinamicamente com base no nome da empresa
+            // Cria uma nova conexão usando a fábrica, mas sem um databaseName para iniciar
+            ConectionDataBases masterConFactory = new ConectionDataBases("");
+			conLogin = masterConFactory.getConectionDataBases(); // Conexão para 'jdbc:mysql://localhost:3306/'
+            
+			// 1. Usar o banco de dados dinamicamente
 			String useDatabase = "USE " + empresa;
-			Statement stmtUse = con.createStatement();
-			stmtUse.execute(useDatabase);
-			System.out.println("Banco de dados selecionado: " + empresa); // Confirmação do banco de dados
-
-			// Preparar a query para verificar o login
-			String sql = "SELECT SENHA FROM tb_usuario WHERE EMAIL = ?";
-			System.out.println("Query: " + sql); // Exibe a query para debug
-			stmt = con.prepareStatement(sql);
-			stmt.setString(1, usuario);
-
-			// Executar a query
-			rs = stmt.executeQuery();
-
-			// Verificar se o usuário foi encontrado e comparar a senha
-			if (rs.next()) {
-				String senhaHash = rs.getString("SENHA");
-
-				// Criar instância de PasswordUtil para comparar o hash
-				PasswordUtil passUtil = new PasswordUtil();
-				String senhaHashFornecida = PasswordUtil.hashPassword(senha);
-
-				// Comparar o hash armazenado com o hash da senha fornecida
-				if (senhaHash.equals(senhaHashFornecida)) {
-					System.out.println("Usuário encontrado e senha correta!"); // Verifica se o login é válido
-					loginValido = true;
-				} else {
-					System.out.println("Senha incorreta!"); // Senha não coincide com o hash
-				}
-			} else {
-				System.out.println("Usuário não encontrado!"); // Usuário não encontrado no banco de dados
+			try (Statement stmtUse = conLogin.createStatement()) {
+				stmtUse.execute(useDatabase);
 			}
 
-		} catch (SQLException e) {
+			// 2. Preparar a query para verificar o login
+			String sql = "SELECT SENHA FROM tb_usuario WHERE EMAIL = ?";
+			
+			// Uso do bloco try-with-resources para PreparedStatement e ResultSet
+			try (PreparedStatement stmt = conLogin.prepareStatement(sql)) {
+				stmt.setString(1, usuario);
+				
+				try (ResultSet rs = stmt.executeQuery()) {
+					if (rs.next()) {
+						String senhaHash = rs.getString("SENHA");
+						
+						// Comparar o hash armazenado com o hash da senha fornecida
+						if (PasswordUtil.hashPassword(senha).equals(senhaHash)) {
+							loginValido = true;
+						}
+					}
+				}
+			}
+
+		} catch (Exception e) {
+			// Imprimir o erro, mas não relançar, pois o login deve retornar false em caso de falha.
 			e.printStackTrace();
 		} finally {
-			// Fechar os recursos
-			try {
-				if (rs != null) {
-					rs.close();
-				}
-				if (stmt != null) {
-					stmt.close();
-				}
-				if (con != null) {
-					con.close();
-				}
-			} catch (SQLException e) {
-				e.printStackTrace();
+			// Fechar a conexão temporária de login
+			if (conLogin != null) {
+				try { conLogin.close(); } catch (SQLException e) { e.printStackTrace(); }
 			}
 		}
 
 		return loginValido;
 	}
 
-	public boolean enviaEmail(String email, String empresa) throws SQLException, ClassNotFoundException, NamingException {
-		Connection con = null;
-		PreparedStatement stmt = null;
-		ResultSet rs = null;
-
-		boolean usuarioEmail = false;
-
-		try {
-			Class.forName("com.mysql.cj.jdbc.Driver");
-			con = DriverManager.getConnection("jdbc:mysql://localhost:3306/", "walan", "359483wa@");
-			// Inicialize a conexão com o banco de dados
-			this.con = connectionFactory.getConectionDataBases(); // Certifique-se de que ConnectionFactory está correto
-
-			// Seleciona a base de dados correta
-			String useDatabase = "USE " + empresa;
-			Statement stmtUse = con.createStatement(); // Aqui pode ocorrer o erro
-			stmtUse.execute(useDatabase);
-
-			// Verifica se o usuário existe
-			String sql = "SELECT * FROM tb_usuario WHERE email = ?";
-			stmt = con.prepareStatement(sql);
-			stmt.setString(1, email);
-			rs = stmt.executeQuery();
-
-			if (rs.next()) {
-				usuarioEmail = true;
-			}
-
-		} catch (SQLException e) {
-			e.printStackTrace();
-		} finally {
-			// Fechar os recursos
-			try {
-				if (rs != null) {
-					rs.close();
-				}
-				if (stmt != null) {
-					stmt.close();
-				}
-				if (con != null) {
-					con.close();
-				}
-			} catch (SQLException e) {
-				e.printStackTrace();
-			}
+	// =========================================================
+	// MÉTODO: enviaEmail
+	// =========================================================
+	public boolean enviaEmail(String email, String empresa) throws SQLException {
+		
+		// Garantia contra NullPointerException se o construtor falhou
+		if (this.con == null) {
+			throw new SQLException("Conexão nula. O DAO falhou na inicialização.");
 		}
 
-		return usuarioEmail;
+		String sql = "SELECT * FROM tb_usuario WHERE email = ?";
+		
+		try (PreparedStatement stmt = this.con.prepareStatement(sql)) {
+			stmt.setString(1, email);
+			
+			try (ResultSet rs = stmt.executeQuery()) {
+				return rs.next();
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+			throw e;
+		}
 	}
 
+	// =========================================================
+	// MÉTODO: recuperaSenha
+	// =========================================================
 	@SuppressWarnings("static-access")
 	public Usuario recuperaSenha(String senha, String email, String empresa) throws SQLException {
-	    Connection con = null;
-	    PreparedStatement stmt = null;
+	    Connection conRecupera = null;
 	    Usuario usuarioSenha = new Usuario();
 
 	    try {
-	        // Carrega o driver JDBC do MySQL
-	        Class.forName("com.mysql.cj.jdbc.Driver");
+	        // Conexão temporária (mesma lógica do login)
+	        ConectionDataBases masterConFactory = new ConectionDataBases("");
+	        conRecupera = masterConFactory.getConectionDataBases();
 
-	        // Conecta ao MySQL sem um banco de dados específico
-	        con = DriverManager.getConnection("jdbc:mysql://localhost:3306/", "walan", "359483wa@");
-
-	        // Seleciona o banco de dados dinamicamente com base na empresa
+	        // Seleciona o banco de dados dinamicamente
 	        String useDatabase = "USE " + empresa;
-	        Statement stmtUse = con.createStatement();
-	        stmtUse.execute(useDatabase);
+	        try (Statement stmtUse = conRecupera.createStatement()) {
+	            stmtUse.execute(useDatabase);
+	        }
 
 	        // Gera o hash da nova senha
-	        PasswordUtil passUtil = new PasswordUtil();
 	        String senhaHashed = PasswordUtil.hashPassword(senha);
 
 	        // Atualiza a senha no banco de dados
 	        String sql = "UPDATE tb_usuario SET senha = ? WHERE email = ?";
-	        stmt = con.prepareStatement(sql);
-	        stmt.setString(1, senhaHashed);
-	        stmt.setString(2, email); // Agora você está passando o email como parâmetro corretamente
+	        
+	        try (PreparedStatement stmt = conRecupera.prepareStatement(sql)) {
+	            stmt.setString(1, senhaHashed);
+	            stmt.setString(2, email);
 
-	        // Executa a atualização
-	        int rowsAffected = stmt.executeUpdate();
+	            int rowsAffected = stmt.executeUpdate();
 
-	        if (rowsAffected > 0) {
-	            System.out.println("Senha atualizada com sucesso.");
-	            usuarioSenha.setSenha(senhaHashed); // Define a nova senha no objeto Usuario
-	            usuarioSenha.setEmail(email);       // Define o email no objeto Usuario
-	        } else {
-	            System.out.println("Erro ao atualizar a senha. Usuário não encontrado.");
+	            if (rowsAffected > 0) {
+	                usuarioSenha.setSenha(senhaHashed);
+	                usuarioSenha.setEmail(email);
+	            }
 	        }
 
 	    } catch (Exception e) {
 	        e.printStackTrace();
 	    } finally {
-	        if (stmt != null) {
-				stmt.close();
-			}
-	        if (con != null) {
-				con.close();
+	        if (conRecupera != null) {
+				try { conRecupera.close(); } catch (SQLException e) { e.printStackTrace(); }
 			}
 	    }
 
 	    return usuarioSenha;
 	}
-	public int cidugoUsuario(Usuario usuario, String empresa) throws SQLException, ClassNotFoundException {
-	    Class.forName("com.mysql.cj.jdbc.Driver");
-	    con = DriverManager.getConnection("jdbc:mysql://localhost:3306/" + empresa, "walan", "359483wa@");
 
-	    String sql = "SELECT id FROM tb_usuario WHERE email = ?";
+	// =========================================================
+	// MÉTODO: cidugoUsuario
+	// =========================================================
+	public int cidugoUsuario(Usuario usuario, String empresa) throws SQLException {
+		
+		if (this.con == null) {
+			throw new SQLException("Conexão nula. O DAO falhou na inicialização.");
+		}
+		
+		String sql = "SELECT id FROM tb_usuario WHERE email = ?";
 
-	    try {
-	        PreparedStatement stmt = con.prepareStatement(sql);
-	        stmt.setString(1, usuario.getEmail());
-	        ResultSet rs = stmt.executeQuery();
+		try (PreparedStatement stmt = this.con.prepareStatement(sql)) {
+			stmt.setString(1, usuario.getEmail());
+			
+			try (ResultSet rs = stmt.executeQuery()) {
+				if (rs.next()) {
+					return rs.getInt("id");
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 
-	        if (rs.next()) {
-	            return rs.getInt("id");
-	        }
-	    } catch (Exception e) {
-	        e.printStackTrace();
-	    }
-
-	    return 0; // Retorna 0 se o usuário não for encontrado
+		return 0;
 	}
-	public int cidcliPedido(Clientepedido clienetepedido, String empresa) throws SQLException, ClassNotFoundException {
-	    Class.forName("com.mysql.cj.jdbc.Driver");
-	    con = DriverManager.getConnection("jdbc:mysql://localhost:3306/" + empresa, "walan", "359483wa@");
+    
+	// =========================================================
+	// MÉTODO: cidcliPedido
+	// =========================================================
+	public int cidcliPedido(Clientepedido clienetepedido, String empresa) throws SQLException {
+		
+		if (this.con == null) {
+			throw new SQLException("Conexão nula. O DAO falhou na inicialização.");
+		}
 
-	    String sql = "SELECT id FROM tb_cliente_pedido WHERE email = ?";
+		String sql = "SELECT id FROM tb_cliente_pedido WHERE email = ?";
 
-	    try {
-	        PreparedStatement stmt = con.prepareStatement(sql);
-	        stmt.setString(1, clienetepedido.getEmail());
-	        ResultSet rs = stmt.executeQuery();
+		try (PreparedStatement stmt = this.con.prepareStatement(sql)) {
+			stmt.setString(1, clienetepedido.getEmail());
+			
+			try (ResultSet rs = stmt.executeQuery()) {
+				if (rs.next()) {
+					return rs.getInt("id");
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 
-	        if (rs.next()) {
-	            return rs.getInt("id");
-	        }
-	    } catch (Exception e) {
-	        e.printStackTrace();
-	    }
-
-	    return 0; // Retorna 0 se o usuário não for encontrado
+		return 0;
 	}
 
+	// =========================================================
+	// MÉTODO: retornUser
+	// =========================================================
+	public Usuario retornUser(Usuario usuario, String empresa,int idUser) throws SQLException {
+		
+		if (this.con == null) {
+			throw new SQLException("Conexão nula. O DAO falhou na inicialização.");
+		}
+		
+		String sql = "SELECT nome FROM tb_usuario WHERE email = ?";
 
-
-	public Usuario retornUser(Usuario usuario, String empresa,int idUser) throws SQLException, ClassNotFoundException {
-	    Class.forName("com.mysql.cj.jdbc.Driver");
-	    con = DriverManager.getConnection("jdbc:mysql://localhost:3306/" + empresa, "walan", "359483wa@");
-
-	    String sql = "SELECT nome FROM tb_usuario WHERE email = ?";
-
-	    try {
-	        PreparedStatement stmt = con.prepareStatement(sql);
-	        stmt.setString(1, usuario.getEmail());
-	        ResultSet rs = stmt.executeQuery();
-
-	        if (rs.next()) {
-	           usuario.setNome(rs.getString("nome"));
-	        }
-	    } catch (Exception e) {
-	        e.printStackTrace();
-	    }
+		try (PreparedStatement stmt = this.con.prepareStatement(sql)) {
+			stmt.setString(1, usuario.getEmail());
+			
+			try (ResultSet rs = stmt.executeQuery()) {
+				if (rs.next()) {
+					usuario.setNome(rs.getString("nome"));
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		return usuario;
-
-
 	}
 	
-	public Clientepedido retornClipedido(Clientepedido clienetepedido, String empresa,int idUser) throws SQLException, ClassNotFoundException {
-	    Class.forName("com.mysql.cj.jdbc.Driver");
-	    con = DriverManager.getConnection("jdbc:mysql://localhost:3306/" + empresa, "walan", "359483wa@");
+	// =========================================================
+	// MÉTODO: retornClipedido
+	// =========================================================
+	public Clientepedido retornClipedido(Clientepedido clienetepedido, String empresa,int idUser) throws SQLException {
+		
+		if (this.con == null) {
+			throw new SQLException("Conexão nula. O DAO falhou na inicialização.");
+		}
 
-	    String sql = "SELECT id FROM tb_cliente_pedido WHERE email = ?";
+		String sql = "SELECT id FROM tb_cliente_pedido WHERE email = ?";
 
-	    try {
-	        PreparedStatement stmt = con.prepareStatement(sql);
-	        stmt.setString(1, clienetepedido.getEmail());
-	        ResultSet rs = stmt.executeQuery();
+		try (PreparedStatement stmt = this.con.prepareStatement(sql)) {
+			stmt.setString(1, clienetepedido.getEmail());
+			
+			try (ResultSet rs = stmt.executeQuery()) {
+				if (rs.next()) {
+					clienetepedido.setId(rs.getInt("id"));
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return clienetepedido;
+	}
+    
+	// =========================================================
+	// MÉTODO: retornCompany
+	// =========================================================
+	public Empresa retornCompany(Empresa emp, String empresaNome, int codigo) throws SQLException {
+		
+		if (this.con == null) {
+			throw new SQLException("Conexão nula. O DAO falhou na inicialização.");
+		}
+
+	    String sql = "SELECT id FROM tb_empresa LIMIT 1";
+
+	    try (PreparedStatement stmt = this.con.prepareStatement(sql);
+	         ResultSet rs = stmt.executeQuery()) {
 
 	        if (rs.next()) {
-	        	clienetepedido.setId(rs.getInt("id"));
+	            Empresa empresaRetornada = new Empresa();
+	            empresaRetornada.setId(rs.getInt("id"));
+	            return empresaRetornada;
 	        }
-	    } catch (Exception e) {
+	    } catch (SQLException e) {
 	        e.printStackTrace();
+	        throw e;
 	    }
-		return clienetepedido;
-
-
+	    return null;
 	}
-	 public Empresa retornCompany(Empresa emp, String empresaNome, int codigo) throws SQLException, ClassNotFoundException {
-	        Class.forName("com.mysql.cj.jdbc.Driver");
-	        con = DriverManager.getConnection("jdbc:mysql://localhost:3306/" + empresaNome, "walan", "359483wa@");
+    
+	// =========================================================
+	// MÉTODO: efetuarLoginPedido
+	// =========================================================
+	public boolean efetuarLoginPedido(String usuario, String senha, String empresa) throws SQLException {
+		
+		Connection conLogin = null;
+		boolean loginValido = false;
 
-	        String sql = "SELECT id FROM tb_empresa LIMIT 1";
+		try {
+			// Conexão temporária (mesma lógica do login)
+			ConectionDataBases masterConFactory = new ConectionDataBases("");
+			conLogin = masterConFactory.getConectionDataBases();
 
-	        try (PreparedStatement stmt = con.prepareStatement(sql);
-	             ResultSet rs = stmt.executeQuery()) {
-
-	            if (rs.next()) {
-	                Empresa empresaRetornada = new Empresa();
-	                empresaRetornada.setId(rs.getInt("id"));
-	                return empresaRetornada;
-	            }
-	        } catch (SQLException e) {
-	            e.printStackTrace();
-	        } finally {
-	            if (con != null) {
-	                try {
-	                    con.close();
-	                } catch (SQLException e) {
-	                    e.printStackTrace();
-	                }
-	            }
-	        }
-	        return null;
-	    }
-	 public boolean efetuarLoginPedido(String usuario, String senha, String empresa) throws ClassNotFoundException {
-			Class.forName("com.mysql.cj.jdbc.Driver");
-			Connection con = null;
-			PreparedStatement stmt = null;
-			ResultSet rs = null;
-			boolean loginValido = false;
-
-			try {
-
-				// Conectar ao MySQL sem especificar um banco de dados
-				con = DriverManager.getConnection("jdbc:mysql://localhost:3306/", "walan", "359483wa@");
-
-				// Usar o banco de dados dinamicamente com base no nome da empresa
-				String useDatabase = "USE " + empresa;
-				Statement stmtUse = con.createStatement();
+			// Usar o banco de dados dinamicamente
+			String useDatabase = "USE " + empresa;
+			try (Statement stmtUse = conLogin.createStatement()) {
 				stmtUse.execute(useDatabase);
-				System.out.println("Banco de dados selecionado: " + empresa); // Confirmação do banco de dados
+			}
 
-				// Preparar a query para verificar o login
-				String sql = "SELECT senha FROM tb_cliente_pedido WHERE EMAIL = ?";
-				System.out.println("Query: " + sql); // Exibe a query para debug
-				stmt = con.prepareStatement(sql);
+			// Preparar a query para verificar o login
+			String sql = "SELECT senha FROM tb_cliente_pedido WHERE EMAIL = ?";
+			
+			try (PreparedStatement stmt = conLogin.prepareStatement(sql)) {
 				stmt.setString(1, usuario);
 
-				// Executar a query
-				rs = stmt.executeQuery();
-
-				// Verificar se o usuário foi encontrado e comparar a senha
-				if (rs.next()) {
-					String senhaHash = rs.getString("SENHA");
-
-					// Criar instância de PasswordUtil para comparar o hash
-					PasswordUtil passUtil = new PasswordUtil();
-					String senhaHashFornecida = PasswordUtil.hashPassword(senha);
-
-					// Comparar o hash armazenado com o hash da senha fornecida
-					if (senhaHash.equals(senhaHashFornecida)) {
-						System.out.println("Usuário encontrado e senha correta!"); // Verifica se o login é válido
-						loginValido = true;
-					} else {
-						System.out.println("Senha incorreta!"); // Senha não coincide com o hash
+				try (ResultSet rs = stmt.executeQuery()) {
+					if (rs.next()) {
+						String senhaHash = rs.getString("SENHA");
+						
+						// Comparar o hash armazenado com o hash da senha fornecida
+						if (PasswordUtil.hashPassword(senha).equals(senhaHash)) {
+							loginValido = true;
+						}
 					}
-				} else {
-					System.out.println("Usuário não encontrado!"); // Usuário não encontrado no banco de dados
-				}
-
-			} catch (SQLException e) {
-				e.printStackTrace();
-			} finally {
-				// Fechar os recursos
-				try {
-					if (rs != null) {
-						rs.close();
-					}
-					if (stmt != null) {
-						stmt.close();
-					}
-					if (con != null) {
-						con.close();
-					}
-				} catch (SQLException e) {
-					e.printStackTrace();
 				}
 			}
 
-			return loginValido;
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			// Fechar a conexão temporária de login
+			if (conLogin != null) {
+				try { conLogin.close(); } catch (SQLException e) { e.printStackTrace(); }
+			}
 		}
 
-
+		return loginValido;
+	}
+    
+    // =========================================================
+	// MÉTODO: close (BOA PRÁTICA)
+	// =========================================================
+	public void close() {
+	    if (this.con != null) {
+	        try {
+	            this.con.close();
+	            this.con = null; // Indica que a conexão foi fechada
+	        } catch (SQLException e) {
+	            e.printStackTrace();
+	        }
+	    }
+	}
 }

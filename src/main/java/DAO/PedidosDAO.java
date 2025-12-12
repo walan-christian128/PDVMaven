@@ -96,9 +96,11 @@ public class PedidosDAO {
                 + "       DATE_FORMAT(data_pedido, '%d/%m/%Y %H:%i:%s') AS data_formatada, "
                 + "       status, "
                 + "       observacoes, "
-                + "       forma_pagamento " 
+                + "       forma_pagamento, "
+                + "       total_pedido "
                 + "FROM pedidos " 
                 + "WHERE clientepedido_id = ? " 
+                + "AND status <> 'Cancelado' " 
                 + "  AND DATE(data_pedido) = ? "
                 + "ORDER BY data_pedido DESC";
 
@@ -115,6 +117,7 @@ public class PedidosDAO {
                     pedido.setStatus(rs.getString("status"));
                     pedido.setObservacoes(rs.getString("observacoes"));
                     pedido.setFormapagamento(rs.getString("forma_pagamento"));
+                    pedido.setTotalPedido(rs.getDouble("total_pedido"));
 
                     Clientepedido cliente = new Clientepedido();
                     cliente.setId(clienteId); // Já temos o ID do cliente
@@ -759,6 +762,15 @@ public class PedidosDAO {
     }
     public boolean atualizarStatuspedido(int idPedido, String novoStatus) throws SQLException {
         String sql = "UPDATE pedidos SET pagamentoPedido = ? WHERE id_pedido = ?";
+        try (PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setString(1, novoStatus);
+            stmt.setInt(2, idPedido);
+            int rows = stmt.executeUpdate();
+            return rows > 0;
+        }
+    }
+    public boolean atualizarStatuspedidoCliente(int idPedido, String novoStatus) throws SQLException {
+        String sql = "UPDATE pedidos SET status = ? WHERE id_pedido = ?";
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setString(1, novoStatus);
             stmt.setInt(2, idPedido);

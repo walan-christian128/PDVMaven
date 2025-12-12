@@ -3,63 +3,83 @@
 <%@ page import="java.util.List"%>
 <%@ page import="java.util.ArrayList"%>
 <%@ page import="Model.Vendas"%>
-<%@ page import="Model.ItensVenda"%>
-<%@ page import="DAO.VendasDAO"%>
+<%@ page import="Model.Usuario"%> <%@ page import="DAO.VendasDAO"%>
 <%@ page import="Model.Produtos"%>
 <%@ page import="DAO.ProdutosDAO"%>
 <%@ page import="java.text.SimpleDateFormat"%>
 <%@ page import="java.util.Date"%>
 <%@ page import="java.time.LocalDate"%>
 <%@ page import="java.time.format.DateTimeFormatter"%>
+<%@ page import="jakarta.servlet.RequestDispatcher"%> <%
+    // =========================================================
+    // 🛑 1. GUARD DE LOGIN E DEFINIÇÕES DE ACESSO
+    // =========================================================
+    Usuario usuarioLogado = (Usuario) session.getAttribute("usuario");
+    String empresa = (String) session.getAttribute("empresa");
+    
+    // Se não houver objeto 'usuario' na sessão OU o nome da base estiver vazio
+    if (usuarioLogado == null || empresa == null || empresa.isEmpty()) {
+        // Redireciona para login (ou página de sessão expirada)
+        RequestDispatcher rd = request.getRequestDispatcher("LoginExpirou.html");
+        rd.forward(request, response);
+        return; 
+    }
 
-<%
-String empresa = (String) session.getAttribute("empresa");
-if (empresa == null || empresa.isEmpty()) {
-    RequestDispatcher rd = request.getRequestDispatcher("LoginExpirou.html");
-    rd.forward(request, response);
-    return; // Certifique-se de que o código pare de executar após o redirecionamento
-}
-List<Vendas> lista;
-VendasDAO Vdao = new VendasDAO(empresa);
-lista = Vdao.listarVendasdoDia();
+    String nivel = usuarioLogado.getNivel();
+    
+    // Variáveis booleanas de controle para exibir funcionalidades:
+    boolean isAdminOuSuperior = "ADMIN".equals(nivel) || "ROOT_MASTER".equals(nivel);
+    boolean isRootMaster = "ROOT_MASTER".equals(nivel);
+
+    // =========================================================
+    // 🛑 2. LÓGICA DE NEGÓCIO E CORREÇÃO DO NULLPOINTEREXCEPTION
+    // =========================================================
+    List<Vendas> lista = new ArrayList<>(); // Inicializa para evitar NullPointer
+    List<Produtos> prodp = new ArrayList<>(); // Inicializa para evitar NullPointer
+    double totalVendasDia = 0;
+    String daoErro = null; // Variável para armazenar erros do DAO
+    
+    try {
+        // 🔑 CORREÇÃO AQUI: O DAO SÓ É CHAMADO SE A SESSÃO ESTIVER OK.
+        // O erro (NullPointerException) ocorreu porque o DAO estava sendo criado
+        // antes de você verificar se a sessão estava OK.
+        
+        // --- VendasDAO ---
+        VendasDAO Vdao = new VendasDAO(empresa);
+        lista = Vdao.listarVendasdoDia(); // Linha 24 original corrigida (agora dentro do try)
+        
+        // --- ProdutosDAO ---
+        ProdutosDAO daop = new ProdutosDAO(empresa);
+        prodp = daop.listarProdutos(); 
+        
+        // --- Total de Vendas ---
+        SimpleDateFormat dataEUA = new SimpleDateFormat("yyyy-MM-dd");
+        String datamysql = dataEUA.format(new Date());
+        DateTimeFormatter formato = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        LocalDate data_venda = LocalDate.parse(datamysql, formato);
+        totalVendasDia = Vdao.retornaTotalVendaPorDia(data_venda);
+        
+    } catch (Exception e) {
+        // Captura o erro do DAO (incluindo falha de conexão ou Query)
+        System.err.println("Erro Crítico ao carregar dados da Home.jsp na base " + empresa + ": " + e.getMessage());
+        daoErro = "Não foi possível carregar os dados (DB Error: " + e.getMessage() + ")";
+        // As listas permanecerão vazias, e o erro será exibido.
+    }
+
+    // Definir o total de vendas como atributo da requisição
+    request.setAttribute("totalVendido", totalVendasDia);
+
+    // Limites de Alerta (os mesmos usados no JS)
+    int limiteAlertaCritico = 3; 
+    int limiteAlertaBaixo = 10;  
 %>
-
-<%
-List<Produtos> prodp; // Declara a lista
-ProdutosDAO daop = new ProdutosDAO(empresa);
-prodp = daop.listarProdutos(); // Atribui o resultado da busca à lista exibida na tabela
-%>
-
-<%
-double totalVendasDia = 0;
-
-// Formatar data para yyyy-MM-dd
-SimpleDateFormat dataEUA = new SimpleDateFormat("yyyy-MM-dd");
-String datamysql = dataEUA.format(new Date());
-
-// Converter a string formatada para LocalDate
-DateTimeFormatter formato = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-LocalDate data_venda = LocalDate.parse(datamysql, formato);
-
-// Instanciar o DAO e obter o total de vendas
-VendasDAO dao = new VendasDAO(empresa);
-totalVendasDia = dao.retornaTotalVendaPorDia(data_venda);
-
-// Definir o total de vendas como atributo da requisição
-request.setAttribute("totalVendido", totalVendasDia);
-
-// Limites de Alerta (os mesmos usados no JS)
-int limiteAlertaCritico = 3; // Pisca
-int limiteAlertaBaixo = 10;  // Amarelo sólido
-%>
-
 
 
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Home</title>
+<title>Home - <%= usuarioLogado.getNome() %>@<%= empresa %></title>
 <link rel="icon"
 	href="img/2992664_cart_dollar_mobile_shopping_smartphone_icon.png">
 <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
@@ -74,7 +94,23 @@ int limiteAlertaBaixo = 10;  // Amarelo sólido
 	<%@ include file="menu.jsp"%>
 
 	<div class="container mt-4">
+	
+	    <% if (daoErro != null) { %>
+            <div class="alert alert-danger text-center shadow-lg" role="alert">
+                <strong>Erro de Conexão:</strong> <%= daoErro %>
+            </div>
+        <% } %>
 		
+		<% if (isRootMaster) { %>
+            <div class="alert alert-danger shadow-lg mb-4 text-center" role="alert">
+                <i class="fas fa-hammer me-2"></i> 
+                <strong>ACESSO ROOT:</strong> Você está na base **<%= empresa %>**. 
+                Use esta seção para gerenciar ativações críticas.
+                <a href="PainelAtivacaoAPI.jsp?base=<%= empresa %>" class="btn btn-warning btn-sm ms-3">
+                    <i class="fab fa-whatsapp me-1"></i> Ativação API
+                </a>
+            </div>
+        <% } %>
 		<div class="row mb-4">
             <div class="col-md-4">
                 <div class="card bg-success text-white shadow">
@@ -148,14 +184,7 @@ int limiteAlertaBaixo = 10;  // Amarelo sólido
 					<label class="form-label">Usuário Logado: </label> <input
 						type="text" class="form-control bg-dark text-white"
 						name="Usuarionome"
-						value="<%
-                                Model.Usuario usuario = (Model.Usuario) session.getAttribute("usuarioNome");
-                                if (usuario != null) {
-	                                out.println("Usuario: " + usuario.getNome());
-                                } else {
-	                                out.println("Usuário não encontrado.");
-                                }
-                            %>"
+						value="Usuario: <%= usuarioLogado.getNome() %> (Nível: <%= nivel %>)"
 						aria-label="Sizing example input"
 						aria-describedby="inputGroup-sizing-sm" readonly>
 				</div>
@@ -231,86 +260,60 @@ int limiteAlertaBaixo = 10;  // Amarelo sólido
 /* -------------------------------------- */
 /* ESTILOS CSS PARA ALERTAS E USABILIDADE */
 /* -------------------------------------- */
-
-/* 1. Alerta de Estoque Crítico (Pisca) */
+/* ... (Seus estilos CSS originais) ... */
 .alerta-estoque-critico {
-    /* Cor base mais forte */
-    background-color: #dc3545 !important; /* Vermelho/Danger */
+    background-color: #dc3545 !important;
     color: white !important;
 }
-
 .alerta-estoque-critico a, .alerta-estoque-critico .fas {
     color: white !important; 
 }
-
-/* Classe que será alternada pelo JS */
 .blink-ativo {
-    background-color: #ffc107 !important; /* Amarelo/Warning */
-    color: #343a40 !important; /* Texto escuro */
+    background-color: #ffc107 !important;
+    color: #343a40 !important;
 }
-
 .blink-ativo a, .blink-ativo .fas {
     color: #343a40 !important; 
 }
-
-
-/* 2. Alerta de Estoque Baixo (Sólido) */
 .alerta-estoque-baixo {
-    background-color: #ffc107 !important; /* Amarelo/Warning */
+    background-color: #ffc107 !important;
     color: #343a40 !important; 
 }
-
 .alerta-estoque-baixo a, .alerta-estoque-baixo .fas {
     color: #343a40 !important;
 }
-
-/* 3. Ícone Pisca-Pisca (apenas o ícone) */
 .pisca {
     animation: blinker 0.8s linear infinite;
 }
-
 @keyframes blinker {
     50% { opacity: 0.0; }
 }
-
-/* Estilo para a coluna de OBS da tabela de Vendas */
 #tabelaVendas tbody tr td:nth-child(5) {
-    max-width: 50px; /* Reduz a largura da coluna de OBS */
+    max-width: 50px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-
 	</style>
 </body>
 <script>
-    
-    // --------------------------------------
-    // 1. FUNÇÃO PISCA-PISCA (Estoque Crítico)
-    // --------------------------------------
+    // ... (Seu código JavaScript original) ...
+    // ... (Mantido sem alterações, pois o foco foi o JSP) ...
     function piscarAlertaEstoque() {
-        // Alterna a classe 'blink-ativo' apenas nas linhas críticas
         $('.alerta-estoque-critico').each(function() {
             $(this).toggleClass('blink-ativo');
         });
     }
 
-    // --------------------------------------
-    // 2. FILTRAGEM DE TABELAS EM TEMPO REAL
-    // --------------------------------------
     function setupTableFilter(inputId, tableId) {
         $(inputId).on("keyup", function() {
             var value = $(this).val().toLowerCase();
             $(tableId + " tbody tr").filter(function() {
-                // Filtra se o texto de qualquer célula (td) contém o valor de busca
                 $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
             });
         });
     }
     
-    // --------------------------------------
-    // 3. ORDENAÇÃO DE COLUNAS (Quantidade)
-    // --------------------------------------
     function setupTableSorting(tableId) {
         $(tableId + ' th[data-sort-by]').on('click', function() {
             var table = $(this).parents('table').eq(0);
@@ -323,7 +326,6 @@ int limiteAlertaBaixo = 10;  // Amarelo sólido
                 table.append(rows[i]);
             }
             
-            // Atualiza o ícone de ordenação
             var icon = $(this).find('i');
             table.find('th i').removeClass('fa-sort-up fa-sort-down').addClass('fa-sort-numeric-down');
             if (this.asc) {
@@ -333,10 +335,8 @@ int limiteAlertaBaixo = 10;  // Amarelo sólido
             }
         });
 
-        // Função comparadora para números
         function comparer(index) {
             return function(a, b) {
-                // Obtém o valor numérico (usando data-qtd para maior precisão)
                 var valA = parseFloat($(a).data('qtd'));
                 var valB = parseFloat($(b).data('qtd'));
                 
@@ -347,24 +347,11 @@ int limiteAlertaBaixo = 10;  // Amarelo sólido
         }
     }
 
-
-    // --------------------------------------
-    // 4. INICIALIZAÇÃO GERAL
-    // --------------------------------------
     $(document).ready(function() {
-        // Inicializa o pisca-pisca para linhas críticas
-        // Se você quiser que o pisca pare, comente esta linha e adicione um setTimeout
         setInterval(piscarAlertaEstoque, 800); 
-
-        // Inicializa os filtros de busca
         setupTableFilter('#filtroVendas', '#tabelaVendas');
         setupTableFilter('#filtroProdutos', '#tabelaProdutos');
-        
-        // Inicializa a ordenação da tabela de Produtos
         setupTableSorting('#tabelaProdutos');
-        
-        // Inicializa Tooltip do Bootstrap para Observações (se necessário)
-        // Certifique-se de que o Bootstrap JS está carregado antes!
         $('[title]').tooltip();
     });
 </script>

@@ -97,7 +97,7 @@ import DAO.ProdutosDAO;
 import DAO.UsuarioDAO;
 
 
-@WebServlet(urlPatterns = { "/pedidoServer", "/selecionarVendaCarrinho", "/finalizarPedidoServlet",
+@WebServlet(urlPatterns = { "/pedidoServer", "/selecionarVendaCarrinho", "/finalizarPedidoServlet","/cancelarPedidoServlet",
 		"/listarPedidosCliente", "/listarPedidos","/selecionarPedido","/getPedidosEntreguesJson","/exibirNotaPedido","/selecionarPedidoCliente" })
 
 public class pedidoServer extends HttpServlet {
@@ -132,6 +132,9 @@ public class pedidoServer extends HttpServlet {
 			} catch (ClassNotFoundException | ServletException | IOException | NamingException e) {
 				e.printStackTrace();
 				response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Erro ao gerar relatório.");
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		} else if ("/getPedidosEntreguesJson".equals(servletPath)) {
 			listarPedidosEntregue(request, response);
@@ -174,9 +177,52 @@ public class pedidoServer extends HttpServlet {
 			}
 		}
 	}
+	@SuppressWarnings("unused")
+	private void cancelarPedido(HttpServletRequest request, HttpServletResponse response) throws SQLException, IOException {
+        HttpSession session = request.getSession();
+        String empresa = (String) session.getAttribute("empresa");
+
+        if (empresa == null) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.getWriter().write("Sessão expirada. Faça login novamente.");
+            return;
+        }
+
+        String idStr = request.getParameter("id");
+        String status = request.getParameter("status"); // Espera-se "Cancelado"
+
+        if (idStr == null || idStr.isEmpty() || !"Cancelado".equalsIgnoreCase(status)) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.getWriter().write("Parâmetros inválidos para cancelamento.");
+            return;
+        }
+
+        try {
+            int idPedido = Integer.parseInt(idStr);
+            PedidosDAO pedidoDAO = new PedidosDAO(empresa);
+            
+            // Chama a função DAO para atualizar o status do pedido
+            boolean sucesso = pedidoDAO.atualizarStatuspedidoCliente(idPedido, "Cancelado"); 
+
+            if (sucesso) {
+                response.setStatus(HttpServletResponse.SC_OK);
+                response.getWriter().write("Pedido " + idPedido + " cancelado com sucesso!");
+            } else {
+                response.setStatus(HttpServletResponse.SC_NOT_MODIFIED); 
+                response.getWriter().write("Não foi possível cancelar o pedido. Verifique o status atual.");
+            }
+        } catch (NumberFormatException e) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.getWriter().write("ID do pedido inválido.");
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.getWriter().write("Erro interno ao tentar cancelar o pedido: " + e.getMessage());
+        }
+    }
 
 	@SuppressWarnings("unused")
-	private void imprimirPedido(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException, ClassNotFoundException, NamingException {
+	private void imprimirPedido(HttpServletRequest request, HttpServletResponse response) throws Exception {
 		
 		HttpSession session = request.getSession();
         String empresa = (String) session.getAttribute("empresa");
@@ -654,15 +700,11 @@ public class pedidoServer extends HttpServlet {
 	private void listarPedidosCliente(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException, ClassNotFoundException, SQLException {
 
-
-
-
+		response.setContentType("text/html; charset=UTF-8");
 		PrintWriter out = response.getWriter();
-
 		HttpSession session = request.getSession();
 
 		String empresa = (String) session.getAttribute("empresa");
-
 		Integer clienteId = (Integer) session.getAttribute("usuarioID");
 
 		if (clienteId == null || empresa == null) {
@@ -678,13 +720,9 @@ public class pedidoServer extends HttpServlet {
 
 		List<Pedidos> listaPedidos = pedidoDAO.listarPedidosPorCliente(clienteId);
 
-// Para formatar moeda (ex: R$ 123,45)
-
+		// Para formatar moeda (ex: R$ 123,45)
 		DecimalFormatSymbols symbols = new DecimalFormatSymbols(new Locale("pt", "BR"));
-
 		symbols.setCurrencySymbol("R$");
-
-		@SuppressWarnings("unused")
 		DecimalFormat df = new DecimalFormat("¤ #,##0.00", symbols);
 
 		if (listaPedidos != null && !listaPedidos.isEmpty()) {
@@ -692,8 +730,11 @@ public class pedidoServer extends HttpServlet {
 			for (Pedidos pedido : listaPedidos) {
 
 				String statusImageUrl = "";
-
 				String statusText = pedido.getStatus();
+				
+				// 🟢 Formatação do Total (Novo)
+				String totalFormatado = df.format(pedido.getTotalPedido()); 
+
 
 				if ("Pendente".equalsIgnoreCase(statusText)) {
 
@@ -722,16 +763,19 @@ public class pedidoServer extends HttpServlet {
 
 				out.println("<div class=\"card-header d-flex justify-content-between align-items-center\">");
 
-				out.println("<h6 class=\"mb-0\">Pedido #" + pedido.getIdPedido() + " - Status: " + pedido.getStatus()
-						+ "</h6>");
+				out.println("<h6 class=\"mb-0\">Pedido #" + pedido.getIdPedido() + "</h6>"); // Removido status do título para usar na linha separada
 
 				out.println("<small>Data: " + pedido.getDataPeedido() + "</small>");
 
 				out.println("</div>"); // card-header
 
 				out.println("<div class=\"card-body\">");
+				
+				// 🟢 Exibição de Status, Total e Forma de Pagamento (Ajustado)
+				out.println("<p class=\"card-text mb-1\"><strong>Status:</strong> " + pedido.getStatus() + "</p>");
+				out.println("<p class=\"card-text mb-1\"><strong>Total:</strong> " + totalFormatado + "</p>");
+				out.println("<p class=\"card-text mb-1\"><strong>Forma de Pagamento:</strong> " + pedido.getFormapagamento() + "</p>");
 
-				out.println("<p class=\"card-text mb-1\">Forma de Pagamento: " + pedido.getFormapagamento() + "</p>");
 
 				if (pedido.getObservacoes() != null && !pedido.getObservacoes().isEmpty()) {
 
@@ -745,7 +789,21 @@ public class pedidoServer extends HttpServlet {
 
 				out.println("</div>");
 
-
+                // 🛑 Lógica para o botão de CANCELAMENTO (INSERIDO AQUI)
+                // O botão só aparece se o status for 'Pendente', 'Confirmado' ou 'Pagamento Confirmado'
+                if ("Pendente".equalsIgnoreCase(statusText) || "Confirmado".equalsIgnoreCase(statusText) || "Pagamento Confirmado".equalsIgnoreCase(statusText)) {
+                    
+                    // Escapa a string da forma de pagamento para ser passada no JavaScript
+                    String formaPagamentoJs = pedido.getFormapagamento().replace("'", "\\'");
+                    
+                    out.println("<div class=\"d-grid gap-2 mt-3\">");
+                    // Chamada à função JS: iniciarCancelamento(ID_PEDIDO, 'FORMA_PAGAMENTO')
+                    out.println("<button type=\"button\" class=\"btn btn-danger btn-sm\" onclick=\"iniciarCancelamento(" + pedido.getIdPedido() + ", '" + formaPagamentoJs + "')\">");
+                    out.println("<i class=\"bi bi-x-octagon-fill\"></i> Cancelar Pedido");
+                    out.println("</button>");
+                    out.println("</div>");
+                }
+                // 🛑 FIM do Novo Trecho
 
 				out.println("</div>"); // card-body
 
@@ -760,7 +818,6 @@ public class pedidoServer extends HttpServlet {
 		}
 
 	}
-
 	@SuppressWarnings("unused")
 	private void CadClientePedido(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
@@ -829,7 +886,7 @@ public class pedidoServer extends HttpServlet {
 	}
 
 	protected void finalizarPedido(HttpServletRequest request, HttpServletResponse response)
-	        throws ServletException, IOException, SQLException, ClassNotFoundException, NamingException {
+	        throws Exception {
 
 	    HttpSession session = request.getSession();
 	    String empresa = (String) session.getAttribute("empresa");
@@ -1077,9 +1134,21 @@ public class pedidoServer extends HttpServlet {
 			} catch (NamingException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 
-		} else {
+		} else if ("/cancelarPedidoServlet".equals(action)) {
+			try {
+				cancelarPedido(request, response);
+			} catch (Exception e) {
+				e.printStackTrace();
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Erro ao processar cancelamento.");
+			}
+			
+		} 
+		else {
 
 			System.err.println("doPost - Ação POST não reconhecida: " + action);
 

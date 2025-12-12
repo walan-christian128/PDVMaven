@@ -7,6 +7,12 @@
         response.sendRedirect("LinkExpirado.html"); // Certifique-se de ter esta página
         return;
     }
+    
+    // Captura o ID da empresa para usar no link de configuração do modal
+    String idEmpresaCadastrada = request.getParameter("id_empresa_cadastrada");
+    if (idEmpresaCadastrada == null) {
+        idEmpresaCadastrada = "0"; // Valor default para evitar erro no link
+    }
 %>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -18,30 +24,32 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
           integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
           crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
     <style>
         body {
             background-image: url('img/Gemini_Generated_Image_97a36f97a36f97a3.jpg');
-            background-size: cover; /* Ajustado para cover */
+            background-size: cover; 
             background-position: center;
-            background-attachment: fixed; /* Opcional: para o fundo não rolar */
+            background-attachment: fixed; 
             margin: 0;
-            padding: 20px 0; /* Adiciona padding vertical para o conteúdo não colar nas bordas */
-            min-height: 100vh; /* Garante que o body tenha pelo menos 100% da altura da tela */
+            padding: 20px 0; 
+            min-height: 100vh; 
             display: flex;
             justify-content: center;
             align-items: center;
-            flex-direction: column; /* Para centralizar verticalmente o card */
+            flex-direction: column; 
         }
         .form-card {
-            background-color: rgba(255, 255, 255, 0.95); /* Fundo branco semi-transparente */
+            background-color: rgba(255, 255, 255, 0.95);
             padding: 30px;
             border-radius: 15px;
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
             width: 100%;
-            max-width: 800px; /* Largura máxima para o formulário */
+            max-width: 800px; 
             margin-top: 20px;
             margin-bottom: 20px;
-            animation: fadeIn 0.8s ease-out; /* Animação ao carregar */
+            animation: fadeIn 0.8s ease-out; 
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
@@ -52,7 +60,7 @@
             color: #333;
         }
         h1, h2, h3, h4, h5 {
-            color: #0d6efd; /* Cor primária do Bootstrap */
+            color: #0d6efd; 
             margin-bottom: 25px;
             text-align: center;
         }
@@ -87,7 +95,7 @@
             justify-content: space-between;
         }
         .invalid-feedback {
-            display: none; /* Oculto por padrão, será exibido via JS */
+            display: none; 
             color: #dc3545;
             font-size: 0.875em;
             margin-top: 0.25rem;
@@ -95,6 +103,10 @@
         .form-control.is-invalid {
             border-color: #dc3545;
             box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+        }
+        /* Estilo para o botão de fechar do modal (para ser branco) */
+        .modal-header .btn-close-white {
+            filter: invert(1) grayscale(100%) brightness(200%);
         }
     </style>
 </head>
@@ -170,9 +182,6 @@
 
         <%
             String[] diasSemana = {"Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"};
-            // O mapeamento de dia_semana para a coluna no banco de dados (0=Dom, 1=Seg...)
-            // é o mesmo que o índice do array, exceto pelo Domingo que é 0.
-            // Para o loop, usamos 0-6 para mapear diretamente.
         %>
 
         <% for (int i = 0; i < diasSemana.length; i++) { %>
@@ -180,7 +189,7 @@
                 <div class="day-header">
                     <span><%= diasSemana[i] %></span>
                     <div class="form-check form-switch">
-                        <input class="form-check-input dia-aberto-switch" type="checkbox" id="aberto_<%= i %>" name="aberto_<%= i %>" <%= (i >= 1 && i <= 6) ? "checked" : "" %>> <%-- Segunda a Sábado checked por padrão --%>
+                        <input class="form-check-input dia-aberto-switch" type="checkbox" id="aberto_<%= i %>" name="aberto_<%= i %>" <%= (i >= 1 && i <= 6) ? "checked" : "" %>> 
                         <label class="form-check-label" for="aberto_<%= i %>">Aberto</label>
                     </div>
                 </div>
@@ -205,18 +214,46 @@
     </form>
 </div>
 
+<div class="modal fade" id="sugestaoModal" tabindex="-1" aria-labelledby="sugestaoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="sugestaoModalLabel">🚀 Próximos Passos Essenciais!</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>O cadastro da sua empresa e usuário foi realizado com sucesso!</p>
+                
+                <h6 class="mt-4 text-primary">Recomendamos ativar:</h6>
+                
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                        <i class="bi bi-whatsapp me-2 text-success"></i>
+                        <strong>Integração com WhatsApp:</strong> Ative a sessão para enviar notificações automáticas de pedidos.
+                    </li>
+                    <li class="list-group-item">
+                        <i class="bi bi-credit-card me-2 text-info"></i>
+                        <strong>Pagamento Online:</strong> Configure sua API de pagamento para receber pedidos imediatamente.
+                    </li>
+                </ul>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Configurar Depois</button>
+                <a href="ConfiguracoesEmpresa.jsp?id=<%= idEmpresaCadastrada %>" class="btn btn-primary">Ir para Configurações</a>
+            </div>
+        </div>
+    </div>
+</div>
 <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.11/jquery.mask.min.js"></script>
-<%-- Removendo jquery.inputmask, já que jquery.mask é suficiente e está em conflito --%>
-<%-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.inputmask/5.0.6/jquery.inputmask.min.js"></script> --%>
 
 <script type="text/javascript">
     $(document).ready(function(){
         // Aplica máscaras
         $('#empresaCnpj').mask('00.000.000/0000-00');
-        $('#telefone').mask('(00) 00000-0000'); // Alterado para 5 dígitos no nono
+        $('#telefone').mask('(00) 00000-0000'); 
 
         // Lógica para mostrar/esconder campos de horário baseados no switch "Aberto"
         $('.dia-aberto-switch').change(function() {
@@ -224,11 +261,9 @@
             const horarioInputs = $('#horario_inputs_' + dayIndex);
             if ($(this).is(':checked')) {
                 horarioInputs.slideDown();
-                // Torna os campos de horário obrigatórios novamente quando abertos
                 horarioInputs.find('input[type="time"]').attr('required', true);
             } else {
                 horarioInputs.slideUp();
-                // Remove a obrigatoriedade e limpa os valores quando fechados
                 horarioInputs.find('input[type="time"]').removeAttr('required').val('');
                 horarioInputs.find('input[type="time"]').removeClass('is-invalid');
                 horarioInputs.find('.invalid-feedback').hide();
@@ -237,7 +272,6 @@
 
         // Simula o clique para garantir o estado inicial correto ao carregar a página
         $('.dia-aberto-switch').each(function() {
-            // Se o switch não estiver marcado, garante que os inputs estejam ocultos e não sejam obrigatórios
             if (!$(this).is(':checked')) {
                 const dayIndex = $(this).attr('id').split('_')[1];
                 const horarioInputs = $('#horario_inputs_' + dayIndex);
@@ -253,7 +287,7 @@
 
             // Validação de campos de texto/email/senha/file
             $(this).find('input[required], select[required]').each(function() {
-                if ($(this).is(':visible') && !$(this).val()) { // Verifica se é visível (não oculto pelo switch)
+                if ($(this).is(':visible') && !$(this).val()) { 
                     formValido = false;
                     $(this).addClass('is-invalid');
                     $(this).next('.invalid-feedback').css('display', 'block');
@@ -269,7 +303,7 @@
                 const aberturaInput = $('#abertura_' + i);
                 const fechamentoInput = $('#fechamento_' + i);
 
-                if (switchAberto.is(':checked')) { // Apenas valida se o dia está marcado como "Aberto"
+                if (switchAberto.is(':checked')) { 
                     const horaAbertura = aberturaInput.val();
                     const horaFechamento = fechamentoInput.val();
 
@@ -308,11 +342,9 @@
 
 
             if (!formValido) {
-                event.preventDefault(); // Impede o envio do formulário
-                // alert('Por favor, corrija os erros no formulário.'); // Opcional: alerta geral
-                // Rola para o primeiro campo inválido
+                event.preventDefault(); 
                 $('html, body').animate({
-                    scrollTop: $('.is-invalid').first().offset().top - 100 // -100px para um pouco de margem
+                    scrollTop: $('.is-invalid').first().offset().top - 100 
                 }, 500);
             }
         });
@@ -324,6 +356,15 @@
                 $(this).next('.invalid-feedback').hide();
             }
         });
+        
+        // 🔑 LÓGICA NOVO: Exibir o modal se o cadastro for bem-sucedido
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Verifica se a URL contém ?status=sucesso
+        if (urlParams.get('status') === 'sucesso') {
+            const sugestaoModal = new bootstrap.Modal(document.getElementById('sugestaoModal'));
+            sugestaoModal.show();
+        }
     });
 </script>
 

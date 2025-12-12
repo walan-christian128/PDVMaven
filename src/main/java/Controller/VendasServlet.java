@@ -141,12 +141,18 @@ public class VendasServlet extends HttpServlet {
 				gerarRelatorio(request, response);
 			} catch (ClassNotFoundException | ServletException | IOException | NamingException e) {
 				e.printStackTrace();
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 			break;
 		case "/relVenda":
 			try {
 				relVenda(request, response);
 			} catch (ClassNotFoundException | ServletException | IOException | NamingException e) {
+				e.printStackTrace();
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			break;
@@ -238,7 +244,7 @@ public class VendasServlet extends HttpServlet {
 	}
 	// 💡 Novo método auxiliar para gerar o relatório com base no ID da venda.
 		private void executarGeracaoRelatorio(HttpServletRequest request, HttpServletResponse response, int cdVenda)
-				throws ServletException, IOException, NamingException, ClassNotFoundException {
+				throws Exception {
 
 			HttpSession session = request.getSession();
 			String empresa = (String) session.getAttribute("empresa");
@@ -301,7 +307,7 @@ public class VendasServlet extends HttpServlet {
 
 	@SuppressWarnings({ "unused"})
 	protected void gerarRelatorio(HttpServletRequest request, HttpServletResponse response)
-	        throws ServletException, IOException, ClassNotFoundException, NamingException {
+	        throws Exception {
 
 	    HttpSession session = request.getSession();
 	    String empresa = (String) session.getAttribute("empresa");
@@ -362,7 +368,7 @@ public class VendasServlet extends HttpServlet {
 	    }
 	}
 	protected void relVenda(HttpServletRequest request, HttpServletResponse response)
-	        throws ServletException, IOException, ClassNotFoundException, NamingException {
+	        throws Exception {
 
 	    HttpSession session = request.getSession();
 	    String empresa = (String) session.getAttribute("empresa");
