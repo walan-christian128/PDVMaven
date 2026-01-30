@@ -50,13 +50,30 @@
             <version>5.0.0</version>
             <scope>provided</scope>
         </dependency>
+		<dependency>
+			<groupId>com.google.zxing</groupId>
+			<artifactId>core</artifactId>
+			<version>3.5.3</version>
+		</dependency>
 
-        <!-- Mercado Pago SDK -->
+		<dependency>
+			<groupId>com.google.zxing</groupId>
+			<artifactId>javase</artifactId>
+			<version>3.5.3</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.json</groupId>
+			<artifactId>json</artifactId>
+			<version>20240303</version>
+		</dependency>
+
+		<!-- Mercado Pago SDK -->
         <dependency>
             <groupId>com.mercadopago</groupId>
             <artifactId>sdk-java</artifactId>
             <version>2.5.0</version>
-            <!-- Forçar uso do Gson novo -->
+			<!-- Forçar uso do Gson novo -->
             <exclusions>
                 <exclusion>
                     <groupId>com.google.code.gson</groupId>
@@ -65,14 +82,14 @@
             </exclusions>
         </dependency>
 
-        <!-- Gson atualizado -->
+		<!-- Gson atualizado -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>2.11.0</version>
         </dependency>
 
-        <!-- Apache Commons Lang (antigo e novo, se ambos necessários) -->
+		<!-- Apache Commons Lang (antigo e novo, se ambos necessários) -->
         <dependency>
             <groupId>commons-lang</groupId>
             <artifactId>commons-lang</artifactId>
@@ -84,14 +101,14 @@
             <version>3.12.0</version>
         </dependency>
 
-        <!-- Apache Commons IO (somente 2.16.1, última versão estável) -->
+		<!-- Apache Commons IO (somente 2.16.1, última versão estável) -->
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>2.16.1</version>
         </dependency>
 
-        <!-- Apache HttpClient -->
+		<!-- Apache HttpClient -->
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
@@ -103,13 +120,14 @@
             <version>4.4.13</version>
         </dependency>
 
-        <!-- Commons Codec -->
+		<!-- Commons Codec -->
         <dependency>
             <groupId>commons-codec</groupId>
             <artifactId>commons-codec</artifactId>
             <version>1.15</version>
         </dependency>
     </dependencies>
+    
 
     <build>
         <resources>
@@ -122,7 +140,7 @@
         </resources>
 
         <plugins>
-            <!-- Compilar com Java 21 -->
+			<!-- Compilar com Java 21 -->
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
@@ -131,7 +149,7 @@
                 </configuration>
             </plugin>
 
-            <!-- Gerar WAR -->
+			<!-- Gerar WAR -->
             <plugin>
                 <artifactId>maven-war-plugin</artifactId>
                 <version>3.2.3</version>

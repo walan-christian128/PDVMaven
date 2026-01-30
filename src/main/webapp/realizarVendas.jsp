@@ -259,7 +259,7 @@ VendasDAO dao = new VendasDAO(empresa);
 			<div class=" col-md-3">
 				<label class="form-label">Total Venda:</label> <input
 					id="totalVenda" type="text" class="form-control" name="totalVendaAtualizado"
-					value="<%=session.getAttribute("totalVendaAtualizado") != null ? session.getAttribute("totalVendaAtualizado").toString() : "0.00"%>">
+					value="0.00">
 
 
 			</div>
@@ -312,7 +312,7 @@ VendasDAO dao = new VendasDAO(empresa);
 								<div class="col-md-3">
 							<label class="form-label">Valor: </label> <input type="text"
 								class="form-control ml-1" id="pegardoTotal"
-								value="<%=session.getAttribute("totalVendaAtualizado")%>"
+								value="0.00"
 								name="iserirtotal">
 						</div>
 						
@@ -997,6 +997,28 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
         }, 300); // Pequeno delay
     });
+});
+</script>
+
+	<script>
+function recalcularTotal() {
+    let total = 0;
+    document.querySelectorAll("#carrinho tbody tr").forEach(row => {
+        let subtotal = parseFloat(row.cells[4].innerText.replace(",", "."));
+        if (!isNaN(subtotal)) total += subtotal;
+    });
+    document.getElementById("totalVenda").value = total.toFixed(2);
+}
+
+window.onload = recalcularTotal;
+</script>
+
+	<script>
+var confirmacaoModal = document.getElementById('confirmacaoModal');
+
+confirmacaoModal.addEventListener('show.bs.modal', function () {
+    let totalTela = document.getElementById("totalVenda").value;
+    document.getElementById("pegardoTotal").value = totalTela;
 });
 </script>
 

@@ -651,7 +651,7 @@ showCardButton.addEventListener('click', async () => {
                         console.log("💳 Resposta do servidor (Flow 2):", result);
 
                         if (paymentResponse.ok && result.status === "approved") {
-                            window.location.href = 'sucesso-Pedido.jsp';
+                            window.location.href = 'pagamento-sucessoPedido.jsp';
                         } else {
                             // Se o pagamento não for aprovado ou der erro 500, o resultado virá aqui
                             const statusDetail = result.status_detail || (result.error ? result.error : 'erro desconhecido');

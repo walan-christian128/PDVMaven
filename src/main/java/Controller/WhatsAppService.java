@@ -8,146 +8,85 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Serviço responsável por enviar mensagens e gerenciar sessões
- * com o servidor Node (WPPConnect) usando credenciais e instância específicas.
- * O nome da instância e o Token de Acesso são passados em tempo de execução
- * (buscados do banco de dados).
+ * Serviço responsável por enviar mensagens ao servidor Node (WPPConnect).
+ *
+ * MUDANÇA CRÍTICA:
+ * - A chave 'chatId' foi substituída por 'phone' no JSON payload,
+ * pois o teste CURL confirmou que este é o formato funcional.
+ * - Adicionado tratamento para garantir que o número é composto apenas por dígitos.
  */
 public class WhatsAppService {
 
-    // VARIÁVEIS FIXAS REMOVIDAS: A URL base e o Token são OBRIGATÓRIOS NOS PARÂMETROS DOS MÉTODOS!
+    // URL base do servidor Node (WPPConnect)
+    private static final String BASE_URL = "http://localhost:21465/api/default";
 
-    // =========================================================================
-    // 🔑 MÉTODOS PARA GERENCIAMENTO DE SESSÃO (Chamados pelo GerarQRCodeServlet)
-    // =========================================================================
+    // Token de autenticação (Mantenha este token atualizado)
+    private static final String ACCESS_TOKEN =
+            "$2b$10$ixqIlWSBItVw2BDoEkuVs.xF0txGxnaXliCXN8yKXKQcnRJA4U.WC";
 
-    /**
-     * Inicia a sessão WPPConnect para uma instância específica (nome da base).
-     * @param instanceName O nome da base de dados (Ex: "empresa_a").
-     * @param accessToken O token de segurança específico para esta API.
-     * @return String JSON com a resposta da API (deve conter o QR Code em Base64).
-     */
-    public static String iniciarSessao(String instanceName, String accessToken) {
-        String endpoint = "http://localhost:21465/api/" + instanceName + "/start-session";
-        
-        System.out.println("DEBUG: Tentando iniciar sessão: " + endpoint);
-        try {
-            // Passamos o accessToken para o método de requisição
-            return enviarPost(endpoint, "{}", "Início de Sessão", accessToken);
-        } catch (Exception e) {
-            System.err.println("Erro ao iniciar sessão WPPConnect: " + e.getMessage());
-            return "{\"success\": false, \"message\": \"Erro de conexão com a API: " + e.getMessage() + "\"}";
-        }
-    }
-
-    /**
-     * Consulta o status da sessão (Ex: CONNECTED, QRCODE, DISCONNECTED).
-     */
-    public static String obterStatusSessao(String instanceName, String accessToken) {
-        String endpoint = "http://localhost:21465/api/" + instanceName + "/status";
-        
-        System.out.println("DEBUG: Tentando obter status: " + endpoint);
-        try {
-            return enviarGet(endpoint, "Consulta de Status", accessToken); 
-        } catch (Exception e) {
-            System.err.println("Erro ao obter status da sessão: " + e.getMessage());
-            return "{\"success\": false, \"message\": \"Erro de conexão com a API: " + e.getMessage() + "\"}";
-        }
-    }
-    
-    /**
-     * Desconecta e encerra a sessão WPPConnect.
-     */
-    public static String desconectarSessao(String instanceName, String accessToken) {
-        String endpoint = "http://localhost:21465/api/" + instanceName + "/close-session";
-        
-        System.out.println("DEBUG: Tentando desconectar sessão: " + endpoint);
-        try {
-            return enviarPost(endpoint, "{}", "Encerramento de Sessão", accessToken);
-        } catch (Exception e) {
-            System.err.println("Erro ao desconectar sessão WPPConnect: " + e.getMessage());
-            return "{\"success\": false, \"message\": \"Erro de conexão com a API: " + e.getMessage() + "\"}";
-        }
-    }
-
-    // =========================================================================
-    // 📦 MÉTODO ORIGINAL PARA ENVIO DE MENSAGENS (Adaptado)
-    // =========================================================================
-    
     /**
      * Envia uma mensagem de notificação de alteração de status.
      *
-     * @param instanceName O nome da base de dados (que é a instância da API).
-     * @param accessToken O token de segurança específico para esta API.
      * @param numero Número do cliente (ex: 5531991815107).
      * @param nome Nome do cliente.
      * @param idPedido ID do pedido.
      * @param novoStatus Novo status do pedido.
      */
-    public static void enviarStatusPedidoTemplate(String instanceName, String accessToken, String numero, String nome, int idPedido, String novoStatus) {
-         String mensagemAEnviar = ""; 
+    public static void enviarStatusPedidoTemplate(String numero, String nome, int idPedido, String novoStatus) {
+        String mensagemAEnviar = "";
         try {
+            // 1. Limpeza e Formatação do Número (Garantindo apenas dígitos)
             String numeroLimpo = numero.replaceAll("[^0-9]", "");
-            
-            // 3. Lógica Condicional para definir a mensagem (mantida do seu código original)
+
             if ("Pendente".equals(novoStatus)) {
-                
-                mensagemAEnviar = "👋 Olá " + nome +
-                    ", o seu pedido #" + idPedido + " foi registrado com sucesso e está *Pendente* de processamento. ⏳" +
-                    "\n\nEstamos aguardando a confirmação do pagamento para dar continuidade. Assim que aprovado, enviaremos um novo aviso!";
-                
+
+                mensagemAEnviar = "👋 Olá *" + nome + "*, o seu pedido *#" + idPedido + "* foi registrado com sucesso e está *Pendente* de processamento. ⏳"
+                        + "\n\nEstamos aguardando a confirmação do pagamento para dar continuidade. Assim que aprovado, enviaremos um novo aviso!";
+
             } else if ("Em Preparo".equals(novoStatus)) {
-                
-                mensagemAEnviar = "⚙️ Olá " + nome +
-                    ", ÓTIMA NOTÍCIA! Seu pedido #" + idPedido +
-                    " já está *Em Preparo*! Nossa equipe está trabalhando para embalar seus itens com cuidado. 📦" +
-                    "\n\nVocê receberá uma nova notificação assim que ele for enviado para Entrega.";
-                
+
+                mensagemAEnviar = "⚙️ Olá *" + nome + "*, ÓTIMA NOTÍCIA! Seu pedido *#" + idPedido + "* já está *Em Preparo*! Nossa equipe está trabalhando para embalar seus itens com cuidado. 📦"
+                        + "\n\nVocê receberá uma nova notificação assim que ele for enviado para Entrega.";
+
             } else if ("Em Rota de Entrega".equals(novoStatus)) {
-                
-                mensagemAEnviar = "🚚 Olá " + nome +
-                    ", seu pedido #" + idPedido +
-                    " está **Em Rota de Entrega** e deve chegar em breve! 📦" +
-                    "\n\n👉 Gentileza, se possível, Compartilhar a sua localização aproximada via WhatsApp. Obrigado!";
-                
+
+                mensagemAEnviar = "🚚 Olá *" + nome + "*, seu pedido *#" + idPedido + "* está **Em Rota de Entrega** e deve chegar em breve! 📦"
+                        + "\n\n👉 *Gentileza, se possível, Compartilhar a sua localização aproximada via WhatsApp.* Obrigado!";
+
             } else if ("Entregue".equals(novoStatus)) {
-                
-                mensagemAEnviar = "🥳 Olá " + nome +
-                    ", seu pedido #" + idPedido +
-                    " foi **Entregue** com sucesso! ✅" +
-                    "\n\nAgradecemos a sua compra! Esperamos que tenha gostado. Qualquer dúvida, estamos à disposição.";
-                
+
+                mensagemAEnviar = "🥳 Olá *" + nome + "*, seu pedido *#" + idPedido + "* foi **Entregue** com sucesso! ✅"
+                        + "\n\nAgradecemos a sua compra! Esperamos que tenha gostado. Qualquer dúvida, estamos à disposição.";
+
             } else if ("Reprovado".equals(novoStatus)) {
-                
-                mensagemAEnviar = "❌ Olá " + nome +
-                    ", lamentamos informar que o seu pedido #" + idPedido +
-                    " foi *Reprovado*." +
-                    "\n\nIsso geralmente ocorre devido a problemas com o pagamento. Por favor, entre em contato com nossa central para regularizar a situação ou refazer o pedido.";
-                
+
+                mensagemAEnviar = "❌ Olá *" + nome + "*, lamentamos informar que o seu pedido *#" + idPedido + "* foi *Reprovado*."
+                        + "\n\nIsso geralmente ocorre devido a problemas com o pagamento. Por favor, entre em contato com nossa central para regularizar a situação ou refazer o pedido.";
+
+            } else if ("Cancelado".equals(novoStatus)) {
+
+                mensagemAEnviar = "🚫 Olá *" + nome + "*, confirmamos o **Cancelamento** do seu pedido *#" + idPedido + "*."
+                        + "\n\nCaso o pagamento já tenha sido efetuado, nosso setor financeiro entrará em contato para o estorno. Se foi um engano, estamos aqui para ajudar!";
+
             } else {
-                
-                // Mensagem padrão ou para status não mapeados
-                mensagemAEnviar = "👋 Olá " + nome +
-                    ", o status do seu pedido #" + idPedido +
-                    " foi atualizado para: " + novoStatus + " ✅";
+
+                // Mensagem padrão para status não mapeados
+                mensagemAEnviar = "👋 Olá *" + nome + "*, o status do seu pedido *#" + idPedido + "* foi atualizado para: *" + novoStatus + "* ✅";
             }
-            
-            // 4. Montagem do JSON
+
+            // 2. Construção do JSON mantendo a chave "phone"
             String json = "{"
                     + "\"phone\":\"" + escapeJson(numeroLimpo) + "\","
                     + "\"message\":\"" + escapeJson(mensagemAEnviar) + "\""
                     + "}";
 
-            // Endpoint AGORA É DINÂMICO
-            String endpoint = "http://localhost:21465/api/" + instanceName + "/send-message";
+            String endpoint = BASE_URL + "/send-message";
 
             System.out.println("\n=== DEBUG ENVIO WPP ===");
-            System.out.println("Instância/Base: " + instanceName);
             System.out.println("Telefone (limpo): " + numeroLimpo);
             System.out.println("JSON enviado: " + json);
 
-            // Chamada do método de POST DINÂMICO
-            String resposta = enviarPost(endpoint, json, "Envio de Mensagem", accessToken);
+            String resposta = enviarPost(endpoint, json);
 
             System.out.println("Resposta do servidor Node: " + resposta);
 
@@ -158,14 +97,10 @@ public class WhatsAppService {
     }
 
 
-    // =========================================================================
-    // ⚙️ MÉTODOS DE REQUISIÇÃO GENÉRICOS (Ajustados para receber o Token)
-    // =========================================================================
-
     /**
      * Envia um POST genérico para o servidor Node (WPPConnect).
      */
-    private static String enviarPost(String urlStr, String json, String logAction, String accessToken) throws Exception {
+    private static String enviarPost(String urlStr, String json) throws Exception {
 
         URL url = new URL(urlStr);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -173,61 +108,38 @@ public class WhatsAppService {
 
         // Configuração de Headers
         conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-        conn.setRequestProperty("Authorization", "Bearer " + accessToken); // USA O TOKEN PASSADO
+        conn.setRequestProperty("Authorization", "Bearer " + ACCESS_TOKEN);
         conn.setDoOutput(true);
-        conn.setConnectTimeout(5000); // 5 segundos
-        conn.setReadTimeout(10000); // 10 segundos
 
         // Envia o JSON
         try (OutputStream os = conn.getOutputStream()) {
             os.write(json.getBytes(StandardCharsets.UTF_8));
         }
 
-        return lerResposta(conn, logAction);
-    }
-    
-    /**
-     * Envia um GET genérico para o servidor Node (WPPConnect).
-     */
-    private static String enviarGet(String urlStr, String logAction, String accessToken) throws Exception {
-
-        URL url = new URL(urlStr);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("GET");
-
-        // Configuração de Headers
-        conn.setRequestProperty("Authorization", "Bearer " + accessToken); // USA O TOKEN PASSADO
-        conn.setConnectTimeout(5000); 
-        conn.setReadTimeout(10000);
-
-        return lerResposta(conn, logAction);
-    }
-    
-    /**
-     * Função auxiliar para ler a resposta de qualquer requisição.
-     */
-    private static String lerResposta(HttpURLConnection conn, String logAction) throws Exception {
-        
         int status = conn.getResponseCode();
         
         // Log do Status Code
         if (status >= 200 && status < 300) {
-            System.out.println("Status HTTP (" + logAction + "): " + status + " (Sucesso)");
+            System.out.println("Status HTTP: " + status + " (Sucesso)");
         } else {
-            System.err.println("Status HTTP (" + logAction + "): " + status + " (Erro na Requisição)");
+            System.err.println("Status HTTP: " + status + " (Erro na Requisição)");
         }
+
 
         // Leitura da Resposta (seja sucesso ou erro)
         BufferedReader br;
         try {
-            // Usa getInputStream para 2xx, e getErrorStream para outros códigos
-            br = new BufferedReader(new InputStreamReader(
-                (status >= 200 && status < 300) ? conn.getInputStream() : conn.getErrorStream(), 
-                StandardCharsets.UTF_8
-            ));
+            if (status >= 200 && status < 300) {
+                br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
+            } else {
+                // Tenta ler o corpo da resposta de erro
+                br = new BufferedReader(new InputStreamReader(conn.getErrorStream(), StandardCharsets.UTF_8));
+            }
         } catch (Exception e) {
-            return "{\"success\": false, \"message\": \"Erro ao ler stream de resposta (" + status + ").\"}";
+            // Se o getErrorStream falhar
+            return "Erro ao ler stream de resposta.";
         }
+        
 
         StringBuilder sb = new StringBuilder();
         String linha;

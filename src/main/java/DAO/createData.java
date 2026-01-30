@@ -207,6 +207,7 @@ public class createData {
                     "EMAIL VARCHAR(150), " +
                     "SENHA VARCHAR(300), " +
                     "empresaID INT DEFAULT NULL, " +
+                    "nivel varchar(20), " + 
                     "CONSTRAINT fk_usuario_empresa FOREIGN KEY (empresaID) REFERENCES tb_empresa(id) ON DELETE CASCADE ON UPDATE CASCADE)";
 
             statement.executeUpdate(createTable_8);
@@ -295,6 +296,20 @@ public class createData {
             		+ ")";
             statement.executeUpdate(createTable13);
             
+            String createTable14 = "CREATE TABLE `funcition_wpp` ("
+            		+ "  `id_connection` int NOT NULL AUTO_INCREMENT,"
+            		+ "  `id_empresa` int NOT NULL,"
+            		+ "  `session_name` varchar(100) DEFAULT NULL,"
+            		+ "  `access_token` varchar(200) DEFAULT NULL,"
+            		+ "  `session_status` varchar(200) DEFAULT NULL,"
+            		+ "  `numero_whatsapp` varchar(100) DEFAULT NULL,"
+            		+ "  PRIMARY KEY (`id_connection`),"
+            		+ "  KEY `fk_empresa_wpp` (`id_empresa`),"
+            		+ "  CONSTRAINT `fk_empresa_wpp` FOREIGN KEY (`id_empresa`) REFERENCES `tb_empresa` (`id`)"
+            		+ ")";
+            statement.executeUpdate(createTable14);
+            
+            
             System.out.println("Tabelas criadas com sucesso!");
         } finally {
             statement.close();
@@ -317,7 +332,7 @@ public class createData {
         con.setAutoCommit(false);
 
         String sqlEmpresa = "INSERT INTO tb_empresa (nome, cnpj, endereco, logo) VALUES (?, ?, ?, ?)";
-        String sqlUsuario = "INSERT INTO tb_usuario (NOME, TELEFONE, EMAIL, SENHA, empresaID, nivel) VALUES (?, ?, ?, ?, ?, 'ADM')";
+        String sqlUsuario = "INSERT INTO tb_usuario (NOME, TELEFONE, EMAIL, SENHA, empresaID, nivel) VALUES (?, ?, ?, ?, ?, ?)";
         String sqlHorario = "INSERT INTO tb_horarios_funcionamento (id_empresa, dia_semana, hora_abertura, hora_fechamento, aberto, observacao) VALUES (?, ?, ?, ?, ?, ?)";
 
         try (
@@ -357,7 +372,7 @@ public class createData {
             // Assumindo que PasswordUtil.hashPassword está disponível
             stmtUsuario.setString(4, PasswordUtil.hashPassword(uso.getSenha())); 
             stmtUsuario.setInt(5, empresaId); 
-            stmtUsuario.setString(6, uso.getNivel());// Relacionando o usuário à empresa criada
+            stmtUsuario.setString(6, "ADM");// Relacionando o usuário à empresa criada
 
             stmtUsuario.executeUpdate();
 

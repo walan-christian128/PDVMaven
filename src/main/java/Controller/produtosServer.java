@@ -264,12 +264,17 @@ public class produtosServer extends HttpServlet {
 
 			String precoCompraStr = request.getParameter("preco_de_compra");
 			if (precoCompraStr != null && !precoCompraStr.isEmpty()) {
-				prod.setPreco_de_compra(Double.parseDouble(precoCompraStr));
+			    // Remove o ponto de milhar e troca a vírgula pelo ponto decimal
+			    String precoLimpo = precoCompraStr.replace(".", "").replace(",", ".");
+			    prod.setPreco_de_compra(Double.parseDouble(precoLimpo));
 			}
 
+			// Tratamento para Preço de Venda
 			String precoVendaStr = request.getParameter("preco_de_venda");
 			if (precoVendaStr != null && !precoVendaStr.isEmpty()) {
-				prod.setPreco_de_venda(Double.parseDouble(precoVendaStr));
+			    // Remove o ponto de milhar e troca a vírgula pelo ponto decimal
+			    String precoLimpo = precoVendaStr.replace(".", "").replace(",", ".");
+			    prod.setPreco_de_venda(Double.parseDouble(precoLimpo));
 			}
 			String statusstr = request.getParameter("status");
 			prod.setStatus(statusstr);

@@ -1,396 +1,318 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8"
-	pageEncoding="UTF-8"%>
-<%@ page import="Model.Fornecedores"%>
-<%@ page import="DAO.FornecedoresDAO"%>
-<%@ page import="java.util.List"%>
-<%@ page import="java.util.ArrayList"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="Model.Fornecedores, DAO.FornecedoresDAO, java.util.List"%>
 
 <%
-String empresa = (String) session.getAttribute("empresa");
-if (empresa == null || empresa.isEmpty()) {
-    RequestDispatcher rd = request.getRequestDispatcher("LoginExpirou.html");
-    rd.forward(request, response);
-    return; // Certifique-se de que o código pare de executar após o redirecionamento
-}
+    String empresa = (String) session.getAttribute("empresa");
+    if (empresa == null || empresa.isEmpty()) {
+        response.sendRedirect("LoginExpirou.html");
+        return;
+    }
 
-List<Fornecedores> lista; // Declara a lista
-FornecedoresDAO dao = new FornecedoresDAO(empresa);
-lista = dao.listaFornecedores();
+    FornecedoresDAO dao = new FornecedoresDAO(empresa);
+    List<Fornecedores> lista = dao.listaFornecedores();
 %>
-<%
-Fornecedores obj = new Fornecedores();
-%>
-
-
 
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fornecedores</title>
-<link rel="icon"
-	href="img/2992655_click_computer_currency_dollar_money_icon.png">
-<link
-	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
-	rel="stylesheet"
-	integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
-	crossorigin="anonymous">
-<link rel="stylesheet"
-	href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.css" />
-<style>
-/* Estilizando o link para remover a sublinhado e alterar a cor */
-td a {
-	text-decoration: none; /* Remove o sublinhado */
-	color: inherit; /* Mantém a cor do texto padrão */
-	cursor: pointer; /* Altera o cursor para indicar que é clicável */
-}
-</style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciamento de Fornecedores</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.css" />
+    
+    <style>
+        body {
+            background-image: url('img/Gemini_Generated_Image_97a36f97a36f97a3.jpg');
+            background-size: cover;
+            background-attachment: fixed;
+            background-position: center;
+            color: #fff;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            color: #333;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        .table-container {
+            background: rgba(33, 37, 41, 0.85);
+            border-radius: 15px;
+            padding: 20px;
+        }
+        .form-label { font-weight: bold; margin-bottom: 2px; font-size: 0.85rem; color: #444; }
+        .modal-label { font-weight: bold; color: #333; }
+    </style>
 </head>
-<body
-	style="background-image: url('img/Gemini_Generated_Image_97a36f97a36f97a3.jpg'); background-size: auto auto; background-position: center; margin: 0; padding: 0; height: 100vh; width: 100vw;">
- 
-	<%@ include file="menu.jsp"%>
-	<div id="container" class="d-flex container-fluid ">
+<body style="background-image: url('img/Gemini_Generated_Image_97a36f97a36f97a3.jpg'); background-size: auto auto; background-position: center; margin: 0; padding: 0; height: 100vh; width: 100vw;">
 
-		<!-- Formulário -->
-		<div id="form-container" class="form-control form-control-sm m-0 text-dark">
-			<h2>Cadastro/Edição de Fornecedores</h2>
-			<form action="insertFornecedor" name="cadastroFornecedores"
-				method="post" class="form-inline needs-validation" id="cadastroFornecedores">
+    <%@ include file="menu.jsp"%>
 
+    <div class="container-fluid mt-4">
+        <div class="row px-2">
+            
+          <div class="col-lg-3 mb-4">
+                <div class="glass-card">
+                    <h4 class="text-center mb-4">Cadastro / Edição</h4>
+                    <form action="insertFornecedor" method="post" id="formFornecedor" class="needs-validation" novalidate>
+                        
+                        <div class="row">
+                            <div class="col-4 mb-2">
+                                <label class="form-label">Cód.</label>
+                                <input type="text" class="form-control" name="id" id="id" disabled placeholder="Novo">
+                            </div>
+                            <div class="col-8 mb-2">
+                                <label class="form-label">CNPJ</label>
+                                <input type="text" class="form-control" name="cnpj" id="cnpj" required>
+                            </div>
+                        </div>
 
-				<div class="mb-3">
-					<label for="id" class="form-label">Código</label> <input
-						type="text" id="id" class="form-control " name="id" disabled>
-				</div>
-				
-				
-				
+                        <div class="mb-2">
+                            <label class="form-label">Razão Social / Nome</label>
+                            <input type="text" class="form-control" name="nome" id="nome" required>
+                        </div>
 
+                        <div class="mb-2">
+                            <label class="form-label">E-mail</label>
+                            <input type="email" class="form-control" name="email" id="email" required>
+                        </div>
 
-				<div class="mb-3">
+                        <div class="row">
+                            <div class="col-6 mb-2">
+                                <label class="form-label">WhatsApp</label>
+                                <input type="text" class="form-control" name="celular" id="celular">
+                            </div>
+                            <div class="col-6 mb-2">
+                                <label class="form-label">Telefone</label>
+                                <input type="text" class="form-control" name="telefone" id="telefone">
+                            </div>
+                        </div>
 
-					<label for="nome" class="form-label">Nome:</label> <input
-						type="text" id="nome" class="form-control" name="nome" required>
-						
-						<div class="invalid-feedback">Campo Obrigatório</div>
-				</div>
-				
+                        <hr>
 
-				<div class="mb-3">
-					<label for="cnpj" class="form-label">Cnpj:</label> <input
-						type="text" id="cnpj" class="form-control" name="cnpj" required>
-				</div>
-				<div class="mb-3">
-					<label for="email" class="form-label">Email:</label> <input
-						type="text" id="email" class="form-control" name="email" required>
-				</div>
-				<div class="mb-3">
-					<label for="celular" class="form-label">Celular/Whats:</label> <input
-						type="text" class="form-control cel-sp-mask"
-						placeholder="Ex.: (00) 00000-0000" id="celular" name="celular">
-				</div>
-				<div class="mb-3">
-					<label for="telefone" class="form-label">Telefone:</label> <input
-						type="text" id="telefone" name="telefone"
-						class="form-control cel-sp-mask"
-						placeholder="Ex.: (00) 00000-0000">
-				</div>
-				<div class="mb-3">
-					<label for="cep" class="form-label">CEP:</label> <input type="text"
-						class="form-control"
-						placeholder="Presione ENTER para pesquisar CEP automaticamente"
-						id="cep" name="cep" required>
-				</div>
-				<div class="mb-3">
-					<label for="endereco" class="form-label">Endereço:</label> <input
-						type="text" class="form-control" id="endereco" name="endereco">
-				</div>
-				<div class="mb-3">
-					<label for="numero" class="form-label">N°:</label> <input
-						type="text" class="form-control" id="numero" name="numero">
-				</div>
-				<div class="mb-3">
-					<label for="bairro" class="form-label">Bairro:</label> <input
-						type="text" class="form-control" id="bairro" name="bairro">
-				</div>
-				<div class="mb-3">
-					<label for="cidade" class="form-label">Cidade:</label> <input
-						type="text" class="form-control" id="cidade" name="cidade">
-				</div>
-				<div class="mb-3">
-					<label for="complemento" class="form-label">Complemento:</label> <input
-						type="text" class="form-control" id="complemento"
-						name="complemento" required>
-				</div>
-				<div class="mb-3">
-					<label for="fornecedor" class="form-label">Estado:</label> <select
-						name="estado" class="form-select" id="estado">
-						<option value="">Selecione o Estado</option>
-						<option value="AC">Acre</option>
-						<option value="AL">Alagoas</option>
-						<option value="AP">Amapá</option>
-						<option value="AM">Amazonas</option>
-						<option value="BA">Bahia</option>
-						<option value="CE">Ceará</option>
-						<option value="DF">Distrito Federal</option>
-						<option value="ES">Espírito Santo</option>
-						<option value="GO">Goiás</option>
-						<option value="MA">Maranhão</option>
-						<option value="MT">Mato Grosso</option>
-						<option value="MS">Mato Grosso do Sul</option>
-						<option value="MG">Minas Gerais</option>
-						<option value="PA">Pará</option>
-						<option value="PB">Paraíba</option>
-						<option value="PR">Paraná</option>
-						<option value="PE">Pernambuco</option>
-						<option value="PI">Piauí</option>
-						<option value="RJ">Rio de Janeiro</option>
-						<option value="RN">Rio Grande do Norte</option>
-						<option value="RS">Rio Grande do Sul</option>
-						<option value="RO">Rondônia</option>
-						<option value="RR">Roraima</option>
-						<option value="SC">Santa Catarina</option>
-						<option value="SP">São Paulo</option>
-						<option value="SE">Sergipe</option>
-						<option value="TO">Tocantins</option>
-						<option value="EX">Estrangeiro</option>
-					</select> <input class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#confirmacaoModal" type="button" value="Salvar">
-                        <div class="modal fade" tabindex="-1" id="confirmacaoModal">
-									<div class="modal-dialog">
-										<div class="modal-content">
-											<div class="modal-header">
-												<h5 class="modal-title">Inserir Fornecedor</h5>
-												<button type="button" class="btn-close"
-													data-bs-dismiss="modal" aria-label="Close"></button>
-											</div>
-											<div class="modal-body">
-												<p>Deseja Realmente Inserir Esse Fornecedor?</p>
-											</div>
-											<div class="modal-footer">
-												<button type="button" class="btn btn-secondary"
-													data-bs-dismiss="modal">Não</button>
-												<input type="submit"
-													class="btn btn-primary" value="Sim"
-													>
-											</div>
-										</div>
-									</div>
-								</div>
+                        <div class="row">
+                            <div class="col-6 mb-2">
+                                <label class="form-label">CEP</label>
+                                <input type="text" class="form-control" name="cep" id="cep" placeholder="Pressione Enter" required>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <label class="form-label">Estado (UF)</label>
+                                <input type="text" class="form-control" name="estado" id="estado" readonly>
+                            </div>
+                        </div>
 
+                        <div class="mb-2">
+                            <label class="form-label">Endereço</label>
+                            <input type="text" class="form-control" name="endereco" id="endereco">
+                        </div>
 
+                        <div class="row">
+                            <div class="col-4 mb-2">
+                                <label class="form-label">Nº</label>
+                                <input type="text" class="form-control" name="numero" id="numero">
+                            </div>
+                            <div class="col-8 mb-2">
+                                <label class="form-label">Bairro</label>
+                                <input type="text" class="form-control" name="bairro" id="bairro">
+                            </div>
+                        </div>
 
+                        <div class="mb-3">
+                            <label class="form-label">Cidade</label>
+                            <input type="text" class="form-control" name="cidade" id="cidade">
+                        </div>
 
+                        <button type="button" class="btn btn-primary w-100 py-2" data-bs-toggle="modal" data-bs-target="#modalConfirm">
+                            Salvar Fornecedor
+                        </button>
+                    </form>
+                </div>
+            </div>
 
+            <div class="col-lg-9">
+                <div class="table-container shadow">
+                    <h3 class="mb-4 text-center">Fornecedores Cadastrados</h3>
+                    <div class="table-responsive">
+                        <table id="tabelaFornecedores" class="table table-dark table-hover align-middle w-100">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nome</th>
+                                    <th>CNPJ</th>
+                                    <th>Contato</th>
+                                    <th>Cidade/UF</th>
+                                    <th class="text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% for (Fornecedores f : lista) { %>
+                                <tr>
+                                    <td><%= f.getId() %></td>
+                                    <td><strong><%= f.getNome() %></strong></td>
+                                    <td><%= f.getCnpj() %></td>
+                                    <td><%= f.getCelular() %></td>
+                                    <td><%= f.getCidade() %>-<%= f.getUf() %></td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-success btn-editar" 
+                                            data-id="<%= f.getId() %>"
+                                            data-nome="<%= f.getNome() %>"
+                                            data-cnpj="<%= f.getCnpj() %>"
+                                            data-email="<%= f.getEmail() %>"
+                                            data-celular="<%= f.getCelular() %>"
+                                            data-telefone="<%= f.getTelefone() %>"
+                                            data-cep="<%= f.getCep() %>"
+                                            data-endereco="<%= f.getEndereco() %>"
+                                            data-numero="<%= f.getNumero() %>"
+                                            data-bairro="<%= f.getBairro() %>"
+                                            data-cidade="<%= f.getCidade() %>"
+                                            data-uf="<%= f.getUf() %>"
+                                            data-complemento="<%= f.getComplemento() %>">
+                                            Editar
+                                        </button>
+                                        <a href="apagar?id=<%= f.getId() %>" class="btn btn-sm btn-danger" onclick="return confirm('Deseja excluir?')">Apagar</a>
+                                    </td>
+                                </tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
+    <div class="modal fade text-dark" id="modalEditar" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title">Editar Fornecedor</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="updateFornecedor" method="post">
+                    <div class="modal-body bg-light">
+                        <div class="row">
+                            <div class="col-md-2 mb-3">
+                                <label class="modal-label">ID</label>
+                                <input type="text" class="form-control bg-secondary-subtle" name="id" id="edit_id" readonly>
+                            </div>
+                            <div class="col-md-5 mb-3">
+                                <label class="modal-label">Nome</label>
+                                <input type="text" class="form-control" name="nome" id="edit_nome" required>
+                            </div>
+                            <div class="col-md-5 mb-3">
+                                <label class="modal-label">CNPJ</label>
+                                <input type="text" class="form-control cnpj" name="cnpj" id="edit_cnpj" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="modal-label">E-mail</label>
+                                <input type="email" class="form-control" name="email" id="edit_email">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="modal-label">Celular</label>
+                                <input type="text" class="form-control celular" name="celular" id="edit_celular">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="modal-label">CEP</label>
+                                <input type="text" class="form-control cep" name="cep" id="edit_cep">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="modal-label">Endereço</label>
+                                <input type="text" class="form-control" name="endereco" id="edit_endereco">
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label class="modal-label">Nº</label>
+                                <input type="text" class="form-control" name="numero" id="edit_numero">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="modal-label">Bairro</label>
+                                <input type="text" class="form-control" name="bairro" id="edit_bairro">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-5 mb-3">
+                                <label class="modal-label">Cidade</label>
+                                <input type="text" class="form-control" name="cidade" id="edit_cidade">
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label class="modal-label">UF</label>
+                                <input type="text" class="form-control" name="estado" id="edit_uf">
+                            </div>
+                            <div class="col-md-5 mb-3">
+                                <label class="modal-label">Complemento</label>
+                                <input type="text" class="form-control" name="complemento" id="edit_complemento">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success px-4">Salvar Alterações</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.11/jquery.mask.min.js"></script>
 
+    <script>
+        $(document).ready(function() {
+            // DataTables
+            $('#tabelaFornecedores').DataTable({
+                language: { url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json' }
+            });
 
-				</div>
+            // Máscaras Dinâmicas
+           $('#cnpj').mask('00.000.000/0000-00');
+            $('#cep').mask('00.000-000');
+            $('#celular, #telefone').mask('(00) 00000-0000');
 
+            // Lógica do Botão Editar (Preencher Modal)
+            $('.btn-editar').on('click', function() {
+                $('#edit_id').val($(this).data('id'));
+                $('#edit_nome').val($(this).data('nome'));
+                $('#edit_cnpj').val($(this).data('cnpj'));
+                $('#edit_email').val($(this).data('email'));
+                $('#edit_celular').val($(this).data('celular'));
+                $('#edit_cep').val($(this).data('cep'));
+                $('#edit_endereco').val($(this).data('endereco'));
+                $('#edit_numero').val($(this).data('numero'));
+                $('#edit_bairro').val($(this).data('bairro'));
+                $('#edit_cidade').val($(this).data('cidade'));
+                $('#edit_uf').val($(this).data('uf'));
+                $('#edit_complemento').val($(this).data('complemento'));
+                
+                $('#modalEditar').modal('show');
+            });
 
-
-			</form>
-
-		</div>
-		<div class="container ">
-			<div>
-				<label for="pesquisa" class="form-label ">Pesquisa</label> <input
-					type="text" class="col-md-3 d-flex align-items-center form-control"
-					id="pesquisa" name="pesquisa"
-					placeholder="Pesquisar fornecedor pelo nome">
-				<div id="tables-container" class="container-sm">
-					<div id="table-container" class="container-sm">
-						<table id="tabela"class="table table-dark table-striped-columns table-hover">
-							<thead>
-								<h2>Fornecedores Cadastrados</h2>
-
-								<tr>
-									<th scope="col">Código</th>
-									<th scope="col">Nome</th>
-									<th scope="col">Cnpj</th>
-									<th scope="col">CEP</th>
-									<th scope="col">Email</th>
-									<th scope="col">Cel/Whats</th>
-									<th scope="col">Telefone</th>
-									<th scope="col">Endereço</th>
-									<th scope="col">N°</th>
-									<th scope="col">Bairro</th>
-									<th scope="col">Cidade</th>
-									<th scope="col">Estado</th>
-									<th scope="col">Complemento</th>
-									<th scope="col">Opções</th>
-
-								</tr>
-							</thead>
-							<tbody>
-								<%
-								for (int i = 0; i < lista.size(); i++) {
-								%>
-								<tr id="row<%=lista.get(i).getId()%>" class="linha-editar"
-									data-id="<%=lista.get(i).getId()%>">
-									<td><a href="selectFornecedor?id=<%=lista.get(i).getId()%>"><%=lista.get(i).getId()%></a></td>
-									<td><a href="selectFornecedor?id=<%=lista.get(i).getId()%>" ><%=lista.get(i).getNome()%></a></td>
-									<td><a href="selectFornecedor?id=<%=lista.get(i).getId()%>"><%=lista.get(i).getCnpj()%></a></td>
-									<td><a href="selectFornecedor?id=<%=lista.get(i).getId()%>"><%=lista.get(i).getCep()%></a></td>
-									<td><a href="selectFornecedor?id=<%=lista.get(i).getId()%>"><%=lista.get(i).getEmail()%></a></td>
-									<td><a href="selectFornecedor?id=<%=lista.get(i).getId()%>"><%=lista.get(i).getCelular()%></a></td>
-									<td><a href="selectFornecedor?id=<%=lista.get(i).getId()%>"><%=lista.get(i).getTelefone()%></a></td>
-									<td><a href="selectFornecedor?id=<%=lista.get(i).getId()%>"><%=lista.get(i).getEndereco()%></a></td>
-									<td><a href="selectFornecedor?id=<%=lista.get(i).getId()%>"><%=lista.get(i).getNumero()%></a></td>
-									<td><a href="selectFornecedor?id=<%=lista.get(i).getId()%>"><%=lista.get(i).getBairro()%></a></td>
-									<td><a href="selectFornecedor?id=<%=lista.get(i).getId()%>"><%=lista.get(i).getCidade()%></a></td>
-									<td><a href="selectFornecedor?id=<%=lista.get(i).getId()%>"><%=lista.get(i).getUf()%></a></td>
-									<td><a href="selectFornecedor?id=<%=lista.get(i).getId()%>"><%=lista.get(i).getComplemento()%></a></td>
-									<td><a href="selectFornecedor?id=<%=lista.get(i).getId()%>" type="button" class="btn btn-success d-flex" name="btnEditar">Editar</a>
-										<a type="button" class="btn btn-danger d-flex" data-bs-toggle="modal" data-bs-target="#exampleModal<%= i %>">Apagar</a></td>
-									
-
-
-
-
-								</tr>
-								<div class="modal fade" tabindex="-1" id="exampleModal<%= i %>">
-									<div class="modal-dialog">
-										<div class="modal-content">
-											<div class="modal-header">
-												<h5 class="modal-title">Editar Fornecedor</h5>
-												<button type="button" class="btn-close"
-													data-bs-dismiss="modal" aria-label="Close"></button>
-											</div>
-											<div class="modal-body">
-												<p>Deseja Realmente Apagar Esse Fornecedor?</p>
-												<h6>"NOTA" : SE VOCÊ ESTA TENTANDO APAGAR UM FORNECEDOR NO QUAL JA ESTA VINCULADO UM PRODUTO NÃO SERA POSSIVEL "REALIZAR SUA EXCLUSÃO". REALIZE UM NOVO CADASTRO SE POSSIVEL</h6>
-											</div>
-											<div class="modal-footer">
-												<button type="button" class="btn btn-secondary"
-													data-bs-dismiss="modal">Não</button>
-												<a href="apagar?id=<%=lista.get(i).getId()%>" type="button"
-													class="btn btn-primary" name="btnCadastrar"
-													id="btnCadastrar">Sim</a>
-											</div>
-										</div>
-									</div>
-								</div>
-								<%
-								}
-								%>
-
-							</tbody>
-						</table>
-
-					</div>
-
-				</div>
-			</div>
-  </div>
-  </div>
-
-
-
-
-
-			<!-- Modal -->
-			<div class="modal fade" id="exampleModal" tabindex="-1"
-				aria-labelledby="exampleModalLabel" aria-hidden="true">
-				<div class="modal-dialog modal-dialog-centered"></div>
-			</div>
-			<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-			<script
-				src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-			<script
-				src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"></script>
-			<script
-				src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.js"></script>
-			<script
-				src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.11/jquery.mask.min.js"></script>
-			<script
-				src="https://cdnjs.cloudflare.com/ajax/libs/jquery.inputmask/5.0.6/jquery.inputmask.min.js"></script>
-				<script>
-    $(document).ready(function(){
-        // Event delegation para a tabela toda
-        $('#tabela').on('click', '.btn-apagar', function(){
-            var id = $(this).closest('tr').data('id');
-            // Abre o modal de confirmação
-            $('#exampleModal').modal('show');
-            // Passa o ID para o botão de confirmar exclusão
-            $('#confirmarApagar').data('id', id);
-        });
-
-        // Função para apagar a linha
-        $('#confirmarApagar').click(function(){
-            var id = $(this).data('id');
-            // Remove a linha da tabela
-            $('#row' + id).remove();
-            // Fecha o modal
-            $('#exampleModal').modal('hide');
-        });
-    });
-</script>
-<script>
-$(document).ready(function() {
-    $("#cepPedido").on("keypress", function(e) {
-        if (e.which == 13) {  // Verifica se a tecla pressionada é Enter
-            e.preventDefault(); // Previne o comportamento padrão de envio do formulário
-
-            var numCep = $("#cep").val().replace(".", "").replace("-", ""); // Remover formatação do CEP
-            var url = "https://viacep.com.br/ws/"+numCep+"/json";
-
-            console.log("CEP digitado: " + numCep);
-
-            $.ajax({
-                url: url,
-                type: "get",
-                dataType: "json",
-                success: function(dados) {
-                    console.log("Resposta da API:", dados);
-                    $("#estado").val(dados.uf);
-                    $("#cidade").val(dados.localidade);
-                    $("#endereco").val(dados.logradouro);
-                    $("#bairro").val(dados.bairro);
-                },
-                error: function(xhr, status, error) {
-                    console.log("Erro na solicitação AJAX:", error);
+            // Busca CEP (Cadastro)
+            $('#cep').on('keypress', function(e) {
+                if (e.which == 13) {
+                    e.preventDefault();
+                    let cep = $(this).val().replace(/\D/g, '');
+                    if (cep !== "") {
+                        $.getJSON("https://viacep.com.br/ws/"+ cep +"/json/", function(dados) {
+                            if (!("erro" in dados)) {
+                                $("#estado").val(dados.uf);
+                                $("#cidade").val(dados.localidade);
+                                $("#endereco").val(dados.logradouro);
+                                $("#bairro").val(dados.bairro);
+                                $("#numero").focus();
+                            }
+                        });
+                    }
                 }
             });
-        }
-    });
-});
-</script>
-<script type="text/javascript">
-    $(document).ready(function(){
-      $('#telefone').mask('(00) - 0000-0000');
-      $('#celular').mask('(00) - 00000-0000');
-      $('#cep').mask('00.000-000');
-      $('#cnpj').mask('00.000.000/0000-00');
-      });
-</script>
-<script>
-    // Verificar a validade do formulário ao enviar
-    (function () {
-        'use strict'
-        var forms = document.querySelectorAll('.needs-validation')
-        Array.prototype.slice.call(forms).forEach(function (form) {
-            form.addEventListener('submit', function (event) {
-                if (!form.checkValidity()) {
-                    event.preventDefault()
-                    event.stopPropagation()
-                }
-                form.classList.add('was-validated')
-            }, false)
-        })
-    })();
+        });
+    </script>
 
-    // Verificar validade dos campos no botão "Adicionar item"
-    document.getElementById("addItemBtn").addEventListener("click", function (event) {
-        var form = document.getElementById('cadastroFornecedores');
-        if (!form.checkValidity()) {
-            event.preventDefault()
-            event.stopPropagation()
-        }
-        form.classList.add('was-validated');
-    });
-</script>
 </body>
 </html>

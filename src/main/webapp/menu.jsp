@@ -201,9 +201,7 @@ for (HorarioFuncionamento hf : horariosEmpresaModal) {
                             <li class="nav-item">
                                 <a class="nav-link" href="#" id="linkAbrirModalEmpresa">Empresa</a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="#" id="linkAbrirModalPagamento" data-bs-toggle="modal" data-bs-target="#modalCadastropagamento">Configuração de pagamento </a>
-                            </li>
+                           
                         </ul>
                     </div>
                 </li>
@@ -427,52 +425,7 @@ for (HorarioFuncionamento hf : horariosEmpresaModal) {
                         </div>
 
                         <!-- ================= Configuração do Gateway ================= -->
-							<hr class="my-4">
-							<h4 class="text-secondary mb-3">Configuração de Pagamento</h4>
-							<div class="row">
-								<div class="col-md-6 mb-3">
-									<label for="gateway" class="form-label">Gateway:</label> <select
-										class="form-select" id="gateway" name="gateway" required>
-										<option value="">Selecione</option>
-										<option value="mercadopago"
-											<%=(pagamentoModal != null && "mercadopago".equals(pagamentoModal.getGateway())) ? "selected" : ""%>>
-											Mercado Pago</option>
-										<option value="paypal"
-											<%=(pagamentoModal != null && "paypal".equals(pagamentoModal.getGateway())) ? "selected" : ""%>>
-											PayPal</option>
-									</select>
-								</div>
-
-			
-
-                    <!-- Chave Pix -->
-                    <div class="col-12">
-                        <label for="chavePix" class="form-label">Chave Pix</label>
-                        <input type="text" id="chavePix" name="chavePix" class="form-control" placeholder="Sua chave Pix" value="<%= pagamentoModal != null ? pagamentoModal.getChavePix() : " " %>">
-                    </div>
-
-                    <!-- Client ID -->
-                    <div class="col-12">
-                        <label for="clientId" class="form-label">Client ID</label>
-                        <input type="text" id="clientId" name="clientId" class="form-control" placeholder="Insira o Client ID do seu gateway" required value="<%= pagamentoModal != null ? pagamentoModal.getClientId() : "" %>">
-                    </div>
-
-                    <!-- Client Secret -->
-                    <div class="col-12">
-                        <label for="clientSecret" class="form-label">Client Secret</label>
-                        <input type="password" id="clientSecret" name="clientSecret" class="form-control" placeholder="Insira o Client Secret do seu gateway" required value="<%= pagamentoModal != null ? pagamentoModal.getClientSecret() : "" %>">
-                    </div>
-
-                    <!-- Access Token -->
-                    <div class="col-12">
-                        <label for="accessToken" class="form-label">Access Token</label>
-                        <input type="text" id="accessToken" name="accessToken" class="form-control" placeholder="Insira o Access Token do seu gateway" required value="<%= pagamentoModal != null ? pagamentoModal.getAccessToken() : "" %>">
-                    </div>
-                    <div class="col-12">
-                        <label for="publickey" class="form-label">Public Key</label>
-                        <input type="text" id="publickey" name="publickey" class="form-control" placeholder="Insira o Access Token do sua publickey" required value="<%= pagamentoModal != null ? pagamentoModal.getPublicKey() : "" %>">
-                    </div>
-							</div>
+							
 
 							<!-- ================= Horários de Funcionamento ================= -->
                         <hr class="my-4">

@@ -69,6 +69,15 @@ try {
 
 }
 
+List<Pedidos> pedidosdiaCancelados = new ArrayList<>();
+try {
+	PedidosDAO canceladosDAO = new PedidosDAO(empresa);
+	pedidosdiaCancelados = canceladosDAO.listaTodosPedidosDoDiaCancelados();
+
+} catch (Exception e) {
+
+}
+
 List<Pedidos> pedidosPreparacao = new ArrayList<>();
 try {
 	PedidosDAO preparacaoDAO = new PedidosDAO(empresa);
@@ -231,6 +240,19 @@ NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("pt", 
 					</div>
 				</div>
 			</div>
+			<div class="col-12 col-sm-6 col-md-4 col-lg-2">
+				<div
+					class="card text-dark bg-light bg-gradient shadow-sm rounded-3">
+					<div
+						class="card-body d-flex justify-content-between align-items-center">
+						<div>
+							<h2 class="card-title mb-0" id="CanceladosDia">0</h2>
+							<p class="card-text mb-0">PEDIDOS CANCELADOS DO DIA</p>
+						</div>
+						<i class="bi bi-cart fs-1 opacity-75"></i>
+					</div>
+				</div>
+			</div>
 		</div>
 		<ul class="nav nav-tabs" id="myTab" role="tablist">
 		
@@ -257,6 +279,10 @@ NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("pt", 
 				<li class="nav-item" role="presentation">
 			<button class="btn btn-info" type="button" data-bs-toggle="tab" data-bs-target="#pedidosPreparacao" type="button" role="tab" aria-controls="profile-tab-pane" aria-selected="true">PEDIDOS EM
 				PREPARAÇÃO</button>
+				</li>
+				<li class="nav-item" role="presentation">
+			<button class="btn btn-dark" type="button" data-bs-toggle="tab" data-bs-target="#pedidosCancelado" type="button" role="tab" aria-controls="profile-tab-pane" aria-selected="true">PEDIDOS EM
+				CANCELADOS DO DIA </button>
 				</li>
 		</div>
 		</ul>
@@ -764,6 +790,77 @@ NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("pt", 
 					</div>
 				</div>
 			</div>
+			
+			<div class="tab-pane fade" id="pedidosCancelado" role="tabpanel"
+				aria-labelledby="profile-tab" tabindex="0">
+				<div class="row">
+					<div class="col-md-12">
+						<div class="table-container">
+							<h1 class="card-title mb-0">Pedidos Entregues</h1>
+							<table id="pedidosDiario"
+								class="table table-dark table-striped table-hover">
+								<thead>
+									<tr>
+										<th>Codigo do pedido</th>
+										<th>Nome</th>
+										<th>Data</th>
+										<th>Status</th>
+										<th>Total Pedido</th>
+										<th>Observação</th>
+										<th>Forma de pagamento</th>
+										<th>Ações</th>
+									</tr>
+								</thead>
+								<tbody id="pedidosTableBody">
+
+									<%
+									if (pedidosdiaCancelados != null && !pedidosdiaCancelados.isEmpty()) {
+										for (int i = 0; i < pedidosdiaCancelados.size(); i++) {
+									%>
+									<tr>
+										<td><%=pedidosdiaCancelados.get(i).getIdPedido()%></td>
+										<td><%=pedidosdiaCancelados.get(i).getClientepedido().getNome()%></td>
+										<td><%=pedidosdiaCancelados.get(i).getDataPeedido()%></td>
+										<td><%=pedidosdiaCancelados.get(i).getStatus()%></td>
+										<td>R$ <%=String.format("%.2f", pedidosdiaCancelados.get(i).getTotalPedido())%></td>
+										<td><%=pedidosdiaCancelados.get(i).getObservacoes() != null && !pedidosdiaCancelados.get(i).getObservacoes().isEmpty()
+		? pedidosdiaCancelados.get(i).getObservacoes()
+		: "-"%></td>
+										<td><%=pedidosdiaCancelados.get(i).getFormapagamento() != null && !pedidosdiaCancelados.get(i).getFormapagamento().isEmpty()
+		? pedidosdiaCancelados.get(i).getFormapagamento()
+		: "-"%></td>
+										<td>
+											<button type="button"
+												class="btn btn-sm btn-info visualizar-pedido"
+												data-id-pedido="<%=todosPedidos.get(i).getIdPedido()%>"
+												data-bs-toggle="modal" data-bs-target="#gereciarPedido">
+												<i class="bi bi-eye"></i> Detalhes
+											</button> <a type="button"
+											class="btn btn-sm btn-success btn-atualizar-status"
+											data-id-pedido="<%=todosPedidos.get(i).getIdPedido()%>"
+											data-novo-status="Em Preparo" data-bs-toggle="modal"
+											data-bs-target="#atualizarStatus"> <i
+												class="bi bi-arrow-up-circle"></i> Atualizar Status
+										</a>
+										</td>
+									</tr>
+									<%
+									}
+									} else {
+									%>
+									<tr>
+										<td colspan="8" class="text-center">Nenhum pedido
+											encontrado para hoje.</td>
+									</tr>
+									<%
+									}
+									%>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+			</div>
 		</div>
 
 <div class="modal fade" id="gereciarPedido" data-bs-backdrop="static"
@@ -874,6 +971,7 @@ NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("pt", 
 							<option value="Em Rota de Entrega">Em Rota de Entrega</option>
 							<option value="Entregue">Entregue</option>
 							<option value="Reprovado">Reprovado</option>
+							<option value="Cancelado">Cancelado</option>
 						</select>
 						<label for="formObservacoes"
 							class="form-label mb-0 me-2 text-nowrap">Observações:</label>

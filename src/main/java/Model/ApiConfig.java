@@ -6,8 +6,17 @@ package Model;
  */
 public class ApiConfig {
 
-    private int id; // Mapeia para id_connection no banco
-    // Renomeado para sessionName para refletir a coluna 'session_name' no DB
+    private int id;
+    private Empresa empresa ;// Mapeia para id_connection no banco
+    public Empresa getEmpresa() {
+		return empresa;
+	}
+
+	public void setEmpresa(Empresa empresa) {
+		this.empresa = empresa;
+	}
+
+	// Renomeado para sessionName para refletir a coluna 'session_name' no DB
     private String sessionName; 
     private String accessToken; // Mapeia para access_token
     private String sessionStatus; // Mapeia para session_status
@@ -36,7 +45,7 @@ public class ApiConfig {
 
     // GETTER: Renomeado de getNomeBase() para getSessionName()
     public String getSessionName() {
-        return sessionName;
+        return (sessionName != null) ? sessionName.trim() : null;
     }
 
     // SETTER: Renomeado de setNomeBase() para setSessionName()
@@ -45,7 +54,7 @@ public class ApiConfig {
     }
 
     public String getAccessToken() {
-        return accessToken;
+        return (accessToken != null) ? accessToken.trim() : null;
     }
 
     public void setAccessToken(String accessToken) {

@@ -14,8 +14,16 @@
     // =========================================================
     // 🛑 1. GUARD DE LOGIN E DEFINIÇÕES DE ACESSO
     // =========================================================
+   Object idSession = session.getAttribute("usuarioID");
     Usuario usuarioLogado = (Usuario) session.getAttribute("usuario");
     String empresa = (String) session.getAttribute("empresa");
+
+    // Se o objeto não existe, mas o ID existe, precisamos "fingir" o objeto ou redirecionar
+    if (idSession == null || empresa == null) {
+        RequestDispatcher rd = request.getRequestDispatcher("LoginExpirou.html");
+        rd.forward(request, response);
+        return; 
+    }
     
     // Se não houver objeto 'usuario' na sessão OU o nome da base estiver vazio
     if (usuarioLogado == null || empresa == null || empresa.isEmpty()) {
@@ -109,7 +117,11 @@
                 <a href="PainelAtivacaoAPI.jsp?base=<%= empresa %>" class="btn btn-warning btn-sm ms-3">
                     <i class="fab fa-whatsapp me-1"></i> Ativação API
                 </a>
-            </div>
+			<button type="button" class="btn btn-primary btn-sm ms-3"
+				data-bs-toggle="modal" data-bs-target="#modalPagamento">
+				<i class="fas fa-credit-card me-1"></i> Ativação Pagamento online
+			</button>
+		</div>
         <% } %>
 		<div class="row mb-4">
             <div class="col-md-4">
@@ -250,6 +262,62 @@
 			</div>
 		</div>
 	</div>
+	
+	<div class="modal fade" id="modalPagamento" tabindex="-1" aria-labelledby="modalPagamentoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark text-white" style="border: 1px solid #444;">
+            <div class="modal-header" style="border-bottom: 1px solid #444;">
+                <h5 class="modal-title" id="modalPagamentoLabel">
+                    <i class="fas fa-cogs me-2"></i>Configuração de Pagamento
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="configpagamento" method="POST">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6 mb-3">
+                            <label for="gateway" class="form-label">Gateway:</label>
+                            <select class="form-select bg-secondary text-white border-0" id="gateway" name="gateway" required>
+                                <option value="">Selecione</option>
+                                <option value="mercadopago">Mercado Pago</option>
+                                <option value="paypal">PayPal</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="chavePix" class="form-label">Chave Pix</label>
+                            <input type="text" id="chavePix" name="chavePix" class="form-control bg-secondary text-white border-0" placeholder="Sua chave Pix">
+                        </div>
+
+                        <div class="col-12 mb-3">
+                            <label for="clientId" class="form-label">Client ID</label>
+                            <input type="text" id="clientId" name="clientId" class="form-control bg-secondary text-white border-0" placeholder="Insira o Client ID do seu gateway" required>
+                        </div>
+
+                        <div class="col-12 mb-3">
+                            <label for="clientSecret" class="form-label">Client Secret</label>
+                            <input type="password" id="clientSecret" name="clientSecret" class="form-control bg-secondary text-white border-0" placeholder="Insira o Client Secret do seu gateway" required>
+                        </div>
+
+                        <div class="col-12 mb-3">
+                            <label for="accessToken" class="form-label">Access Token</label>
+                            <input type="text" id="accessToken" name="accessToken" class="form-control bg-secondary text-white border-0" placeholder="Insira o Access Token do seu gateway" required>
+                        </div>
+
+                        <div class="col-12 mb-3">
+                            <label for="publickey" class="form-label">Public Key</label>
+                            <input type="text" id="publickey" name="publickey" class="form-control bg-secondary text-white border-0" placeholder="Insira a sua Public Key" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid #444;">
+                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Fechar</button>
+                    <button type="submit" class="btn btn-success">Salvar Configurações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 	<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js" crossorigin="anonymous"></script>
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>

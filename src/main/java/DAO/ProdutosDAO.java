@@ -33,32 +33,36 @@ public class ProdutosDAO {
 
 	// metodo cadastra produtos//
 	public void cadastrar(Produtos obj) {
-		try {
+	    String sql = "insert into tb_produtos(descricao,qtd_estoque,preco_de_compra,preco_de_venda,for_id,imagem,status) values(?,?,?,?,?,?,?)";
+	    
+	    try (PreparedStatement stmt = con.prepareStatement(sql)) {
+	        stmt.setString(1, obj.getDescricao());
+	        stmt.setInt(2, obj.getQtd_estoque());
+	        stmt.setDouble(3, obj.getPreco_de_compra());
+	        stmt.setDouble(4, obj.getPreco_de_venda());
 
-			String sql = "insert into tb_produtos(descricao,qtd_estoque,preco_de_compra,preco_de_venda,for_id,imagem,status)values(?,?,?,?,?,?,?)";
-			PreparedStatement stmt = con.prepareStatement(sql);
-			stmt.setString(1, obj.getDescricao());
-			stmt.setInt(2, obj.getQtd_estoque());
-			stmt.setDouble(3, obj.getPreco_de_compra());
-			stmt.setDouble(4, obj.getPreco_de_venda());
-			stmt.setInt(5, obj.getFornecedor().getId());
-			stmt.setString(7, obj.getStatus());
-			
-			 if (obj.getImagem() != null) {
-	                ByteArrayInputStream bais = new ByteArrayInputStream(obj.getImagem());
-	                stmt.setBinaryStream(6, bais, obj.getImagem().length);
-	            } else {
-	                stmt.setNull(6, Types.BLOB);
-	            }
+	        // Tratamento para o fornecedor (for_id) aceitar nulo
+	        if (obj.getFornecedor() != null && obj.getFornecedor().getId() > 0) {
+	            stmt.setInt(5, obj.getFornecedor().getId());
+	        } else {
+	            stmt.setNull(5, java.sql.Types.INTEGER);
+	        }
 
-			stmt.execute();
+	        // Tratamento da imagem
+	        if (obj.getImagem() != null) {
+	            ByteArrayInputStream bais = new ByteArrayInputStream(obj.getImagem());
+	            stmt.setBinaryStream(6, bais, obj.getImagem().length);
+	        } else {
+	            stmt.setNull(6, java.sql.Types.BLOB);
+	        }
 
-			stmt.close();
+	        stmt.setString(7, obj.getStatus());
 
-		} catch (Exception erro) {
-
-		}
-
+	        stmt.execute();
+	        // O close() é feito automaticamente pelo try-with-resources
+	    } catch (SQLException erro) {
+	        throw new RuntimeException("Erro ao cadastrar produto: " + erro.getMessage());
+	    }
 	}
 
 	public List<Produtos> listarProdutosPedido() {
@@ -70,7 +74,7 @@ public class ProdutosDAO {
 			
 
 			String sql = "select p.id,p.descricao,p.qtd_estoque,p.preco_de_compra,p.preco_de_venda,p.imagem,p.status,f.nome,f.id from tb_produtos as p "
-					+ "inner join tb_fornecedores as f on (p.for_id=f.id)"
+					+ "left join tb_fornecedores as f on (p.for_id=f.id)"
 					+ "where p.status = 'ativado'";
 
 			PreparedStatement stmt = con.prepareStatement(sql);
@@ -116,7 +120,7 @@ public class ProdutosDAO {
 			
 
 			String sql = "select p.id,p.descricao,p.qtd_estoque,p.preco_de_compra,p.preco_de_venda,p.imagem,p.status,f.nome,f.id from tb_produtos as p "
-					+ "inner join tb_fornecedores as f on (p.for_id=f.id)";
+					+ "left join tb_fornecedores as f on (p.for_id=f.id)";
 
 			PreparedStatement stmt = con.prepareStatement(sql);
 			ResultSet rs = stmt.executeQuery();
@@ -285,7 +289,7 @@ public class ProdutosDAO {
 
 			// 1 passo criar lista de produtos//
 			String sql = "select p.id,p.descricao,p.qtd_estoque,p.preco_de_compra,p.preco_de_venda,p.imagem,p.status,f.nome,f.id from tb_produtos as p "
-					+ "inner join tb_fornecedores as f on (p.for_id=f.id) where p.id=?";
+					+ "left join tb_fornecedores as f on (p.for_id=f.id) where p.id=?";
 
 			PreparedStatement stmt = con.prepareStatement(sql);
 			stmt.setInt(1, obj.getId());

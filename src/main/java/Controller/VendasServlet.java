@@ -507,204 +507,175 @@ public class VendasServlet extends HttpServlet {
 	}
 
 	private void inserirVendas(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
+	        throws ServletException, IOException {
 
-		HttpSession session = request.getSession();
+	    HttpSession session = request.getSession();
 
-		try {
-			String empresaBase = (String) session.getAttribute("empresa");
-			if (empresaBase == null || empresaBase.isEmpty()) {
-				System.err.println("Erro: Nome da base da empresa não definido na sessão.");
-				response.sendRedirect("erroPagamento.jsp?msg=empresa-base-nao-definida");
-				return;
-			}
+	    try {
+	        String empresaBase = (String) session.getAttribute("empresa");
+	        if (empresaBase == null || empresaBase.isEmpty()) {
+	            response.sendRedirect("erroPagamento.jsp?msg=empresa-base-nao-definida");
+	            return;
+	        }
 
-			String empresaNome = request.getParameter("empresaNome");
-			if (empresaNome == null || empresaNome.isEmpty()) {
-				empresaNome = empresaBase;
-			}
+	        Integer empresaId = 1;
+	        session.setAttribute("empresaId", empresaId);
 
-			// 💡 Simplificando: Assumindo ID fixo 1 conforme seu requisito
-			Integer empresaId = 1;
-			session.setAttribute("empresaId", empresaId);
+	        Integer usuarioID = (Integer) session.getAttribute("usuarioID");
 
-			Integer usuarioID = (Integer) session.getAttribute("usuarioID");
+	        String idCliStr = request.getParameter("cliId");
+	        String totalVendaStr = request.getParameter("iserirtotal");
+	        String descontoStr = request.getParameter("desconto");
+	        String formaPagamento = request.getParameter("formaPagamento");
 
-			String idCliStr = request.getParameter("cliId");
-			String totalVendaStr = request.getParameter("iserirtotal");
-			String descontoStr = request.getParameter("desconto");
-			String formaPagamento = request.getParameter("formaPagamento");
+	        int idCli = (idCliStr != null && !idCliStr.isEmpty()) ? Integer.parseInt(idCliStr) : 0;
+	        double totalVenda = (totalVendaStr != null && !totalVendaStr.isEmpty()) ? Double.parseDouble(totalVendaStr) : 0.0;
+	        double desconto = (descontoStr != null && !descontoStr.isEmpty()) ? Double.parseDouble(descontoStr) : 0.0;
 
-			int idCli = (idCliStr != null && !idCliStr.isEmpty()) ? Integer.parseInt(idCliStr) : 0;
-			double totalVenda = (totalVendaStr != null && !totalVendaStr.isEmpty()) ? Double.parseDouble(totalVendaStr)
-					: 0.0;
-			double desconto = (descontoStr != null && !descontoStr.isEmpty()) ? Double.parseDouble(descontoStr) : 0.0;
+	        Vendas obj = new Vendas();
 
-			Vendas obj = new Vendas();
-			if (idCli > 0) {
-				Clientes objCli = new Clientes();
-				objCli.setId(idCli);
-				obj.setCliente(objCli);
-			}
-			obj.setData_venda(request.getParameter("data"));
-			obj.setTotal_venda(totalVenda);
-			obj.setObs(request.getParameter("observacao"));
-			obj.setDesconto(desconto);
-			obj.setFormaPagamento(formaPagamento);
+	        if (idCli > 0) {
+	            Clientes objCli = new Clientes();
+	            objCli.setId(idCli);
+	            obj.setCliente(objCli);
+	        }
 
-			if (usuarioID != null && usuarioID > 0) {
-				Usuario objUser = new Usuario();
-				objUser.setId(usuarioID);
-				obj.setUsuario(objUser);
-			}
+	        obj.setData_venda(request.getParameter("data"));
+	        obj.setTotal_venda(totalVenda);
+	        obj.setObs(request.getParameter("observacao"));
+	        obj.setDesconto(desconto);
+	        obj.setFormaPagamento(formaPagamento);
 
-			VendasDAO dao = new VendasDAO(empresaBase);
-			// 1. Cadastra a Venda
-			dao.cadastrarVenda(obj);
-			obj.setId(dao.retornaUltimaVenda()); // Obtém o ID da venda recém-criada
+	        // 🔥 STATUS DA VENDA
+	        if ("MERCADOPAGO".equalsIgnoreCase(formaPagamento)) {
+	            obj.setSetStatusVenda(formaPagamento);
+	        } else {
+	            obj.setSetStatusVenda("PAGA");
+	        }
 
-			// 2. Insere os Itens da Venda e Baixa o Estoque
-			JSONArray itensArray = (JSONArray) session.getAttribute("itens");
-			if (itensArray != null && itensArray.length() > 0) {
-				for (int i = 0; i < itensArray.length(); i++) {
-					JSONObject linha = itensArray.getJSONObject(i);
+	        if (usuarioID != null && usuarioID > 0) {
+	            Usuario objUser = new Usuario();
+	            objUser.setId(usuarioID);
+	            obj.setUsuario(objUser);
+	        }
 
-					int idProdVenda = Integer.parseInt(linha.getString("idProd"));
-					int qtdProd = Integer.parseInt(linha.getString("qtdProd"));
-					double subItens = Double.parseDouble(linha.getString("subtotal"));
+	        VendasDAO dao = new VendasDAO(empresaBase);
 
-					ProdutosDAO dao_produto = new ProdutosDAO(empresaBase);
-					itensVendaDAO daoitem = new itensVendaDAO(empresaBase);
+	        // 1️⃣ Salva venda
+	        dao.cadastrarVenda(obj);
+	        obj.setId(dao.retornaUltimaVenda());
 
-					Produtos objp = new Produtos();
-					ItensVenda itens = new ItensVenda();
+	        // 🔑 Define se o estoque deve baixar agora
+	        boolean baixarEstoqueAgora = !"MERCADOPAGO".equalsIgnoreCase(formaPagamento);
 
-					itens.setVenda(obj);
-					objp.setId(idProdVenda);
-					itens.setProduto(objp);
-					itens.setQtd(qtdProd);
-					itens.setSubtotal(subItens);
+	        // 2️⃣ Insere itens
+	        JSONArray itensArray = (JSONArray) session.getAttribute("itens");
+	        if (itensArray != null && itensArray.length() > 0) {
 
-					int qtd_estoque = dao_produto.retornaEstoqueAtual(objp.getId());
-					dao_produto.baixarEstoque(objp.getId(), qtd_estoque - qtdProd);
+	            ProdutosDAO dao_produto = new ProdutosDAO(empresaBase);
+	            itensVendaDAO daoitem = new itensVendaDAO(empresaBase);
 
-					daoitem.cadastraItem(itens);
-				}
-				session.removeAttribute("itens");
-				session.removeAttribute("desconto");
-				session.removeAttribute("totalVenda");
-				session.removeAttribute("totalVendaAtualizado");
-			}
+	            for (int i = 0; i < itensArray.length(); i++) {
+	                JSONObject linha = itensArray.getJSONObject(i);
 
-			// 3. 🚦 Lógica de Pagamento / Relatório
-			if ("MERCADOPAGO".equalsIgnoreCase(formaPagamento)) {
-				// 🔹 INTEGRAÇÃO MERCADO PAGO - O fluxo segue para o checkout
-				ConfigPagamentoDAO cfgDao = new ConfigPagamentoDAO(empresaBase);
-				ConfigPagamento cfg = cfgDao.buscarPorEmpresa(empresaId);
+	                int idProdVenda = Integer.parseInt(linha.getString("idProd"));
+	                int qtdProd = Integer.parseInt(linha.getString("qtdProd"));
+	                double subItens = Double.parseDouble(linha.getString("subtotal"));
 
-				if (cfg == null || cfg.getAccessToken() == null || cfg.getAccessToken().isEmpty()) {
-					System.err.println("Erro: Configuração de pagamento inválida para empresaId " + empresaId);
-					response.sendRedirect("erroPagamento.jsp?msg=access-token-invalido");
-					return;
-				}
+	                Produtos objp = new Produtos();
+	                objp.setId(idProdVenda);
 
-				try {
-					MercadoPagoConfig.setAccessToken(cfg.getAccessToken());
-					PreferenceClient client = new PreferenceClient();
+	                ItensVenda itens = new ItensVenda();
+	                itens.setVenda(obj);
+	                itens.setProduto(objp);
+	                itens.setQtd(qtdProd);
+	                itens.setSubtotal(subItens);
 
-					String externalReference = empresaBase + "_" + obj.getId();
+	                daoitem.cadastraItem(itens);
 
-					PreferenceItemRequest itemRequest = PreferenceItemRequest.builder()
-							.title("Venda #" + obj.getId())
-							.quantity(1)
-							.unitPrice(new BigDecimal(obj.getTotal_venda()))
-							.currencyId("BRL")
-							.build();
+	                // 🚦 BAIXA ESTOQUE SÓ SE NÃO FOR MERCADO PAGO
+	                if (baixarEstoqueAgora) {
+	                    int qtd_estoque = dao_produto.retornaEstoqueAtual(objp.getId());
+	                    dao_produto.baixarEstoque(objp.getId(), qtd_estoque - qtdProd);
+	                }
+	            }
 
-					// Obtém URL do Ngrok (necessário para BackUrls e NotificationUrl)
-					String ngrokBaseUrl = getNgrokTunnelUrl();
-					if (ngrokBaseUrl == null) {
-						System.err.println("Erro: Não foi possível obter a URL do Ngrok. Verifique se o Ngrok está rodando.");
-						response.sendRedirect("erroPagamento.jsp?msg=ngrok-nao-online");
-						return;
-					}
+	            session.removeAttribute("itens");
+	        }
 
-					System.out.println("URL de notificação a ser enviada para o Mercado Pago: " + ngrokBaseUrl + "/PDVVenda/mercadopago-webhook");
+	        // =========================================================
+	        // 🚀 FLUXO MERCADO PAGO
+	        // =========================================================
+	        if ("MERCADOPAGO".equalsIgnoreCase(formaPagamento)) {
 
-					PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
-							.success(ngrokBaseUrl + "/PDVVenda/pagamento-sucesso")
-							.failure(ngrokBaseUrl + "/PDVVenda/pagamento-falhou")
-							.pending(ngrokBaseUrl + "/PDVVenda/pagamento-pendente")
-							.build();
+	            ConfigPagamentoDAO cfgDao = new ConfigPagamentoDAO(empresaBase);
+	            ConfigPagamento cfg = cfgDao.buscarPorEmpresa(empresaId);
 
-					PreferencePayerRequest payer = PreferencePayerRequest.builder()
-							.name(request.getParameter("nomeCliente"))
-							.email(request.getParameter("emailCliente"))
-							.build();
+	            if (cfg == null || cfg.getAccessToken() == null || cfg.getAccessToken().isEmpty()) {
+	                response.sendRedirect("erroPagamento.jsp?msg=access-token-invalido");
+	                return;
+	            }
 
-					PreferenceRequest prefRequest = PreferenceRequest.builder()
-							.items(Collections.singletonList(itemRequest))
-							.externalReference(externalReference)
-							.backUrls(backUrls)
-							.payer(payer)
-							.autoReturn("approved")
-							.notificationUrl(ngrokBaseUrl + "/PDVVenda/mercadopago-webhook")
-							.build();
+	            MercadoPagoConfig.setAccessToken(cfg.getAccessToken());
+	            PreferenceClient client = new PreferenceClient();
 
-					Preference pref = client.create(prefRequest);
+	            String externalReference = empresaBase + "_" + obj.getId();
 
-					request.setAttribute("preferenceId", pref.getId());
-					request.setAttribute("publicKey", cfg.getPublicKey());
-					request.setAttribute("initPoint", pref.getInitPoint());
-					request.setAttribute("totalVenda", obj.getTotal_venda());
-					request.setAttribute("nomeCliente", request.getParameter("nomeCliente"));
-					request.setAttribute("emailCliente", request.getParameter("emailCliente"));
+	            PreferenceItemRequest itemRequest = PreferenceItemRequest.builder()
+	                    .title("Venda #" + obj.getId())
+	                    .quantity(1)
+	                    .unitPrice(new BigDecimal(obj.getTotal_venda()))
+	                    .currencyId("BRL")
+	                    .build();
 
-					// Redireciona para o checkout do MP. O relatório NÃO é gerado agora.
-					request.getRequestDispatcher("checkout.jsp").forward(request, response);
+	            String ngrokBaseUrl = getNgrokTunnelUrl();
+	            if (ngrokBaseUrl == null) {
+	                response.sendRedirect("Pagamento Indisponivel.jsp?msg=ngrok-nao-online");
+	                return;
+	            }
 
-					return;
+	            PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
+	                    .success(ngrokBaseUrl + "/PDVVenda/pagamento-sucesso")
+	                    .failure(ngrokBaseUrl + "/PDVVenda/pagamento-falhou")
+	                    .pending(ngrokBaseUrl + "/PDVVenda/pagamento-pendente")
+	                    .build();
 
-				} catch (MPApiException e) {
-					System.err.println("Erro na API do Mercado Pago: " + e.getApiResponse().getContent());
-					response.sendRedirect("erroPagamento.jsp?msg=erro-api-mp");
-					return;
-				} catch (Exception e) {
-					System.err.println("Erro na integração com Mercado Pago:");
-					e.printStackTrace();
-					response.sendRedirect("erroPagamento.jsp?msg=erro-geral-mp");
-					return;
-				}
-			} else {
-				// 🔹 OUTRAS FORMAS DE PAGAMENTO - Gera o relatório e exibe imediatamente
-				try {
-					// 💡 CHAMA O NOVO MÉTODO
-					executarGeracaoRelatorio(request, response, obj.getId());
-					// Não precisa de forward/redirect, pois a resposta é o PDF
-					return;
-				} catch (NamingException e) {
-					System.err.println("Erro de Naming ao gerar relatório:");
-					e.printStackTrace();
-					response.getWriter().write("Erro ao gerar relatório (Naming): " + e.getMessage());
-					return;
-				}
-			}
+	            PreferencePayerRequest payer = PreferencePayerRequest.builder()
+	                    .name(request.getParameter("nomeCliente"))
+	                    .email(request.getParameter("emailCliente"))
+	                    .build();
 
-			// Se houver algum erro ou se o fluxo cair aqui sem gerar o PDF (o que não
-			// deveria acontecer no ELSE), redireciona.
-			// response.sendRedirect("realizarVendas.jsp"); // Comentei para evitar que a
-			// resposta seja duplicada após a geração do PDF.
+	            PreferenceRequest prefRequest = PreferenceRequest.builder()
+	                    .items(Collections.singletonList(itemRequest))
+	                    .externalReference(externalReference)
+	                    .backUrls(backUrls)
+	                    .payer(payer)
+	                    .autoReturn("approved")
+	                    .notificationUrl(ngrokBaseUrl + "/PDVVenda/mercadopago-webhook")
+	                    .build();
 
-		} catch (NumberFormatException e) {
-			System.err.println("Erro de conversão de número. Verifique os parâmetros.");
-			e.printStackTrace();
-			response.sendRedirect("erroPagamento.jsp?msg=formato-numero-invalido");
-		} catch (Exception e) {
-			System.err.println("Erro geral no processo de vendas.");
-			e.printStackTrace();
-			response.sendRedirect("erroPagamento.jsp?msg=erro-geral");
-		}
+	            Preference pref = client.create(prefRequest);
+
+	            request.setAttribute("preferenceId", pref.getId());
+	            request.setAttribute("publicKey", cfg.getPublicKey());
+	            request.setAttribute("initPoint", pref.getInitPoint());
+
+	            request.getRequestDispatcher("checkout.jsp").forward(request, response);
+	            return;
+	        }
+
+	        // =========================================================
+	        // 💵 OUTROS PAGAMENTOS (BAIXA JÁ FOI FEITA)
+	        // =========================================================
+	        response.sendRedirect("relatorioVenda.jsp?vendaID=" + obj.getId());
+
+
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	        response.sendRedirect("erroPagamento.jsp?msg=erro-geral");
+	    }
 	}
+
 
     private String getNgrokTunnelUrl() {
         try {

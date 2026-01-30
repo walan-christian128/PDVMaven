@@ -7,6 +7,7 @@ import java.sql.SQLException;
 
 import Conexao.ConectionDataBases;
 import Model.ApiConfig;
+import Model.Empresa;
 
 public class ApiConfigDAO {
 
@@ -31,64 +32,109 @@ public class ApiConfigDAO {
 	 // USANDO A TABELA funcition_wpp
 	 // =========================================================
 	 public int salvarOuAtualizarConfig(ApiConfig config) throws Exception {
-	     
-	     // ATENÇÃO: Ajustei os nomes das colunas para a sua tabela funcition_wpp
-	     // Se a base de dados usa 'nomeBase' no campo 'session_name' (ou similar) no lugar de 'id_empresa',
-	     // ajuste o SQL conforme a estrutura REAL. Presumi que 'nomeBase' é o identificador único.
-	     
-	     // 1. Tenta atualizar a linha existente (usando session_name como chave única para simplificar)
-	     String updateSql = "UPDATE funcition_wpp SET access_token = ?, session_status = ? WHERE session_name = ?";
-	     
-	     // 2. Se a atualização falhar (0 linhas afetadas), insere uma nova linha
-	     String insertSql = "INSERT INTO funcition_wpp (session_name, access_token, session_status) VALUES (?, ?, ?)";
-	     
-	     int rowsAffected = 0;
-	     
-	     try (PreparedStatement updateStmt = con.prepareStatement(updateSql)) {
-	         updateStmt.setString(1, config.getAccessToken());
-	         updateStmt.setString(2, config.getSessionStatus());
-	         updateStmt.setString(3, config.getSessionName()); // Usando session_name como chave
-	         
-	         rowsAffected = updateStmt.executeUpdate();
-	     }
-	     
-	     // Se a atualização não afetou nenhuma linha, insere.
-	     if (rowsAffected == 0) {
-	         try (PreparedStatement insertStmt = con.prepareStatement(insertSql)) {
-	             insertStmt.setString(1, config.getSessionName());
-	             insertStmt.setString(2, config.getAccessToken());
-	             insertStmt.setString(3, config.getSessionStatus());
-	             rowsAffected = insertStmt.executeUpdate();
-	         }
-	     }
-	     
-	     return rowsAffected;
-	 }
+
+		    String updateSql =
+		        "UPDATE funcition_wpp " +
+		        "SET access_token = ?, session_status = ?, numero_whatsapp = ? " +
+		        "WHERE id_empresa = ?";
+
+		    String insertSql =
+		        "INSERT INTO funcition_wpp " +
+		        "(id_empresa, session_name, access_token, session_status, numero_whatsapp) " +
+		        "VALUES (?, ?, ?, ?, ?)";
+
+		    int rowsAffected;
+
+		    // UPDATE
+		    try (PreparedStatement updateStmt = con.prepareStatement(updateSql)) {
+		        updateStmt.setString(1, config.getAccessToken());
+		        updateStmt.setString(2, config.getSessionStatus());
+		        updateStmt.setString(3, config.getNumeroWhatsapp());
+		        updateStmt.setInt(4, config.getEmpresa().getId());
+
+		        rowsAffected = updateStmt.executeUpdate();
+		    }
+
+		    // INSERT
+		    if (rowsAffected == 0) {
+		        try (PreparedStatement insertStmt = con.prepareStatement(insertSql)) {
+		            insertStmt.setInt(1, config.getEmpresa().getId());
+		            insertStmt.setString(2, config.getSessionName());
+		            insertStmt.setString(3, config.getAccessToken());
+		            insertStmt.setString(4, config.getSessionStatus());
+		            insertStmt.setString(5, config.getNumeroWhatsapp());
+
+		            rowsAffected = insertStmt.executeUpdate();
+		        }
+		    }
+
+		    return rowsAffected;
+		}
+
 
 	 // =========================================================
 	 // BUSCAR CONFIGURAÇÃO
 	 // =========================================================
-	 public ApiConfig buscarConfigPorBase(String nomeBase) throws Exception {
-	     ApiConfig config = null;
-	     
-	     // Ajustado para usar as colunas da tabela funcition_wpp
-	     String sql = "SELECT id_connection, session_name, access_token, session_status FROM funcition_wpp WHERE session_name = ?";
+	 public ApiConfig buscarConfigPorBase(String sessionName) throws Exception {
 
-	     try (PreparedStatement stmt = con.prepareStatement(sql)) {
-	         stmt.setString(1, nomeBase); // Assumindo que nomeBase = session_name
-	         try (ResultSet rs = stmt.executeQuery()) {
-	             if (rs.next()) {
-	                 config = new ApiConfig();
-	                 config.setId(rs.getInt("id_connection")); // Usando id_connection
-	                 config.setSessionName(rs.getString("session_name"));
-	                 config.setAccessToken(rs.getString("access_token"));
-	                 config.setSessionStatus(rs.getString("session_status"));
-	                 // Removi config.setNomeBase(nomeBase) pois ApiConfig deve ter apenas sessionName
-	             }
-	         }
-	     }
-	     return config; // Retorna null se não encontrar
-	 }
+		    ApiConfig config = null;
+
+		    String sql =
+		        "SELECT id_connection, id_empresa, session_name, access_token, session_status, numero_whatsapp " +
+		        "FROM funcition_wpp WHERE session_name = ?";
+
+		    try (PreparedStatement stmt = con.prepareStatement(sql)) {
+		        stmt.setString(1, sessionName);
+
+		        try (ResultSet rs = stmt.executeQuery()) {
+		            if (rs.next()) {
+		                config = new ApiConfig();
+		                config.setId(rs.getInt("id_connection"));
+		                config.setSessionName(rs.getString("session_name"));
+		                config.setAccessToken(rs.getString("access_token"));
+		                config.setSessionStatus(rs.getString("session_status"));
+		                config.setNumeroWhatsapp(rs.getString("numero_whatsapp"));
+
+		                Empresa empresa = new Empresa();
+		                empresa.setId(rs.getInt("id_empresa"));
+		                config.setEmpresa(empresa);
+		            }
+		        }
+		    }
+
+		    return config;
+		}
+	 public ApiConfig buscarConfigPorEmpresa(int idEmpresa) throws Exception {
+
+		    ApiConfig config = null;
+
+		    String sql =
+		        "SELECT id_connection, id_empresa, session_name, access_token, session_status, numero_whatsapp " +
+		        "FROM funcition_wpp WHERE id_empresa = ?";
+
+		    try (PreparedStatement stmt = con.prepareStatement(sql)) {
+		        stmt.setInt(1, idEmpresa);
+
+		        try (ResultSet rs = stmt.executeQuery()) {
+		            if (rs.next()) {
+		                config = new ApiConfig();
+		                config.setId(rs.getInt("id_connection"));
+		                config.setSessionName(rs.getString("session_name"));
+		                config.setAccessToken(rs.getString("access_token"));
+		                config.setSessionStatus(rs.getString("session_status"));
+		                config.setNumeroWhatsapp(rs.getString("numero_whatsapp"));
+
+		                Empresa empresa = new Empresa();
+		                empresa.setId(rs.getInt("id_empresa"));
+		                config.setEmpresa(empresa);
+		            }
+		        }
+		    }
+
+		    return config;
+		}
+
+
 	 
 	 // =========================================================
 	 // OBTER TOKEN

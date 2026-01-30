@@ -9,35 +9,18 @@
 <%@ page import="DAO.VendasDAO"%>
 
 <%
-    // --- Bloco de Lógica Java para Preparação de Dados ---
-    // Verificação de sessão para segurança e redirecionamento
     String empresa = (String) session.getAttribute("empresa");
     if (empresa == null || empresa.isEmpty()) {
         RequestDispatcher rd = request.getRequestDispatcher("LoginExpirado.jsp");
         rd.forward(request, response);
-        return; // Garante que o código pare de executar após o redirecionamento
+        return;
     }
 
-    // Carregamento da lista de Fornecedores para o select do formulário e para exibição na tabela
-    List<Fornecedores> listaFornecedores;
     FornecedoresDAO fornecedoresDao = new FornecedoresDAO(empresa);
-    listaFornecedores = fornecedoresDao.listaFornecedores();
+    List<Fornecedores> listaFornecedores = fornecedoresDao.listaFornecedores();
 
-    // Carregamento da lista de Produtos para exibição na tabela
-    List<Produtos> listaProdutos;
     ProdutosDAO produtosDao = new ProdutosDAO(empresa);
-    listaProdutos = produtosDao.listarProdutos();
-
-    // Instância de Produtos (pode ser útil para preenchimento de formulário em caso de edição,
-    // mas para cadastro puro, pode ser dispensada aqui)
-    Produtos produto = new Produtos();
-
-    // Instância de Vendas e lista de Vendas do Dia (Mantenho se houver uso futuro nesta JSP,
-    // caso contrário, podem ser removidas para otimização)
-    Vendas venda = new Vendas();
-    List<Vendas> listaVendasDoDia;
-    VendasDAO vendasDao = new VendasDAO(empresa);
-    listaVendasDoDia = vendasDao.listarVendasdoDia(); // Carrega vendas do dia
+    List<Produtos> listaProdutos = produtosDao.listarProdutos();
 %>
 
 <!DOCTYPE html>
@@ -50,44 +33,32 @@
     <style>
         body {
             background-image: url('img/Gemini_Generated_Image_97a36f97a36f97a3.jpg');
-            background-size: cover; /* Ajusta a imagem para cobrir todo o corpo */
+            background-size: cover;
             background-position: center;
             margin: 0;
             padding: 0;
-            min-height: 100vh; /* Garante que o background cubra toda a altura */
+            min-height: 100vh;
             width: 100vw;
-            background-attachment: fixed; /* Fixa a imagem de fundo para que não role com o conteúdo */
-            color: #f8f9fa; /* Cor do texto padrão para contraste com o fundo escuro */
+            background-attachment: fixed;
+            color: #f8f9fa;
         }
-        .container-fluid {
-            padding-top: 20px; /* Espaçamento superior */
-            padding-bottom: 20px; /* Espaçamento inferior */
-        }
-        .table-dark {
-            background-color: rgba(33, 37, 41, 0.8); /* Fundo da tabela com transparência para o background aparecer */
-        }
+        .container-fluid { padding-top: 20px; padding-bottom: 20px; }
+        .table-dark { background-color: rgba(33, 37, 41, 0.8); }
         .form-container {
-            background-color: rgba(33, 37, 41, 0.9); /* Fundo do formulário com mais transparência */
+            background-color: rgba(33, 37, 41, 0.9);
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-        }
-        label.form-label {
-            color: #f8f9fa; /* Cor das labels do formulário */
-        }
-        h2 {
-            color: #f8f9fa; /* Cor dos títulos */
         }
     </style>
 </head>
 <body style="background-image: url('img/Gemini_Generated_Image_97a36f97a36f97a3.jpg'); background-size: auto auto; background-position: center; margin: 0; padding: 0; height: 100vh; width: 100vw;">
 
-    <%-- Inclui o menu de navegação --%>
     <%@ include file="menu.jsp"%>
 
     <div class="container-fluid mt-4">
         <div class="row">
-            <div class="col-md-7 mb-4"> <%-- Usando col-md-7 para a tabela ocupar um pouco mais de espaço --%>
+            <div class="col-md-7 mb-4">
                 <h2 class="mb-3 text-center">Lista de Produtos</h2>
                 <div id="table-container" class="overflow-auto" style="max-height: 500px;">
                     <table id="tabela" class="table table-dark table-bordered table-hover">
@@ -95,127 +66,105 @@
                             <tr>
                                 <th>Código</th>
                                 <th>Descrição</th>
-                                <th>Quantidade</th>
+                                <th>Qtd</th>
                                 <th>Preço Compra</th>
                                 <th>Preço Venda</th>
-                                <th>Margem</th>
-                                <th>Status Para Venda </th>
+                                <th>Status</th>
                                 <th>Fornecedor</th>
                                 <th>Opções</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <% if (listaProdutos != null && !listaProdutos.isEmpty()) { %>
-                                <% for (int i = 0; i < listaProdutos.size(); i++) { %>
-                                <tr id="row<%=listaProdutos.get(i).getId()%>" class="linha-editar" data-id="<%=listaProdutos.get(i).getId()%>">
-                                    <td><%=listaProdutos.get(i).getId()%></td>
-                                    <td><%=listaProdutos.get(i).getDescricao()%></td>
-                                    <td><%=listaProdutos.get(i).getQtd_estoque()%></td>
-                                    <td><%= String.format("R$ %.2f", listaProdutos.get(i).getPreco_de_compra()) %></td>
-                                    <td><%= String.format("R$ %.2f", listaProdutos.get(i).getPreco_de_venda()) %></td>
+                            <% if (listaProdutos != null && !listaProdutos.isEmpty()) { 
+                                for (Produtos p : listaProdutos) { %>
+                                <tr id="row<%=p.getId()%>">
+                                    <td><%=p.getId()%></td>
+                                    <td><%=p.getDescricao()%></td>
+                                    <td><%=p.getQtd_estoque()%></td>
+                                    <td><%= String.format("R$ %.2f", p.getPreco_de_compra()) %></td>
+                                    <td><%= String.format("R$ %.2f", p.getPreco_de_venda()) %></td>
+                                    <td><%= p.getStatus() %></td>
                                     <td>
-                                        <script>
-                                            var precoCompra = <%= listaProdutos.get(i).getPreco_de_compra() %>;
-                                            var precoVenda = <%= listaProdutos.get(i).getPreco_de_venda() %>;
-                                            if (precoCompra > 0) {
-                                                var porcentagem = ((precoVenda - precoCompra) / precoCompra) * 100;
-                                                document.write(porcentagem.toFixed(2) + '%');
+                                        <% 
+                                            // Verificação segura de fornecedor nulo na listagem
+                                            if (p.getFornecedor() != null && p.getFornecedor().getId() > 0) {
+                                                boolean encontrou = false;
+                                                for (Fornecedores f : listaFornecedores) {
+                                                    if (f.getId() == p.getFornecedor().getId()) {
+                                                        out.print(f.getNome());
+                                                        encontrou = true;
+                                                        break;
+                                                    }
+                                                }
+                                                if(!encontrou) out.print("<span class='text-muted'>Não encontrado</span>");
                                             } else {
-                                                document.write('N/A');
+                                                out.print("<span class='badge bg-secondary'>Sem Fornecedor</span>");
                                             }
-                                        </script>
-                                    </td>
-                                    <td><%=listaProdutos.get(i).getStatus() %></td>
-                                    <td>
-                                        <% for (Fornecedores fornecedorNaLista : listaFornecedores) {
-                                            if (fornecedorNaLista.getId() == listaProdutos.get(i).getFornecedor().getId()) { %>
-                                            <%=fornecedorNaLista.getNome()%>
-                                        <% break; /* Otimização: sair do loop assim que encontrar o fornecedor */ } } %>
+                                        %>
                                     </td>
                                     <td>
-                                        <a href="select?id=<%=listaProdutos.get(i).getId()%>" class="btn btn-success btn-sm">Editar</a>
-                                        <a href="delete?id=<%=listaProdutos.get(i).getId()%>" class="btn btn-danger btn-sm">Apagar</a>
+                                        <a href="select?id=<%=p.getId()%>" class="btn btn-success btn-sm">Editar</a>
+                                        <a href="delete?id=<%=p.getId()%>" class="btn btn-danger btn-sm">Apagar</a>
                                     </td>
                                 </tr>
-                                <% } %>
-                            <% } else { %>
-                                <tr><td colspan="8" class="text-center">Nenhum produto cadastrado.</td></tr>
-                            <% } %>
+                            <% } } %>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <div class="col-md-5 mb-4"> <%-- Usando col-md-5 para o formulário ocupar o restante do espaço --%>
+            <div class="col-md-5 mb-4">
                 <div id="form-container" class="form-container">
                     <form name="cadastrarProduto" action="insert" enctype="multipart/form-data" method="post">
                         <h2 class="mb-4 text-center text-white">Cadastro de Produtos</h2>
 
                         <div class="mb-3">
-                            <label for="descricao" class="form-label">Descrição:</label>
+                            <label for="descricao" class="form-label text-white">Descrição:</label>
                             <input type="text" id="descricao" class="form-control" name="descricao" required>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="quantidade" class="form-label">Quantidade em Estoque:</label>
-                            <input type="number" id="quantidade" class="form-control" name="qtd_estoque" min="0" required>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="quantidade" class="form-label text-white">Estoque:</label>
+                                <input type="number" id="quantidade" class="form-control" name="qtd_estoque" min="0" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="status" class="form-label text-white">Disponível?</label>
+                                <select id="status" name="status" class="form-select">
+                                    <option value="ativado">Sim</option>
+                                    <option value="desativado">Não</option>
+                                </select>
+                            </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="preco_compra" class="form-label">Preço de Compra:</label>
-                            <input type="text" id="preco_compra" class="form-control" name="preco_de_compra" required>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="preco_compra" class="form-label text-white">Preço Compra:</label>
+                                <input type="text" id="preco_compra" class="form-control" name="preco_de_compra" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="preco_venda" class="form-label text-white">Preço Venda:</label>
+                                <input type="text" id="preco_venda" class="form-control" name="preco_de_venda" required>
+                            </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="preco_venda" class="form-label">Preço de Venda:</label>
-                            <input type="number" step="0.01" class="form-control" id="preco_venda" name="preco_de_venda">
+                        <div class="mb-3 form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="checkFornecedor">
+                            <label class="form-check-label text-white" for="checkFornecedor">Vincular um Fornecedor?</label>
                         </div>
-						<div class="col-md-4">
-							<div class="mb-3">
-								<label for="status" class="form-label text-white">Disponivel
-									para venda?</label> <select id="status" name="status"
-									class="form-select">
-									<option value="ativado">Sim</option>
-									<option value="destivado">Não</option>
-								</select>
-							</div>
-						</div>
 
-						<div class="mb-3">
-                            <label for="fornecedor" class="form-label">Fornecedor:</label>
+                        <div class="mb-3" id="divFornecedor" style="display: none;">
+                            <label for="fornecedor" class="form-label text-white">Fornecedor:</label>
                             <select name="for_id" class="form-select" id="fornecedor">
                                 <option value="" selected>Selecione o fornecedor</option>
-                                <%
-                                    String selectedFornecedorId = request.getParameter("for_id");
-                                    if (selectedFornecedorId == null) {
-                                        selectedFornecedorId = (String) request.getAttribute("for_id");
-                                    }
-
-                                    for (Fornecedores fornecedor : listaFornecedores) {
-                                        int fornecedorId = fornecedor.getId();
-                                        String nomeFornecedorAtual = fornecedor.getNome();
-                                        boolean isSelected = false;
-                                        if (selectedFornecedorId != null) {
-                                            try {
-                                                if (Integer.parseInt(selectedFornecedorId) == fornecedorId) {
-                                                    isSelected = true;
-                                                }
-                                            } catch (NumberFormatException e) {
-                                                // Ignora se o valor não for um número válido
-                                            }
-                                        }
-                                %>
-                                <option value="<%= fornecedorId %>" <%= isSelected ? "selected" : "" %>>
-                                    <%= nomeFornecedorAtual %>
-                                </option>
-                                <%
-                                    }
-                                %>
+                                <% for (Fornecedores f : listaFornecedores) { %>
+                                    <option value="<%= f.getId() %>"><%= f.getNome() %></option>
+                                <% } %>
                             </select>
                         </div>
 
                         <div class="mb-3">
-                            <label for="logo" class="form-label">Imagem do Produto:</label>
+                            <label for="logo" class="form-label text-white">Imagem do Produto:</label>
                             <input type="file" class="form-control" id="logo" name="logo" accept="image/*">
                         </div>
 
@@ -227,28 +176,29 @@
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.11/jquery.mask.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.inputmask/5.0.6/jquery.inputmask.min.js"></script>
-    <script src="scripts/buscaProduto.js"></script>
+
     <script>
         $(document).ready(function(){
-            // Inicialização do DataTables
+            // DataTables
             $('#tabela').DataTable({
-                "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json"
-                },
-                "paging": true,
-                "searching": true,
-                "ordering": true,
-                "info": true
+                "language": { "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json" }
             });
 
-            // Aplica máscaras monetárias
-            $('#preco_compra').mask('000.000.000.000.000,00', {reverse: true});
-            $('#preco_venda').mask('000.000.000.000.000,00', {reverse: true});
+            // Máscaras
+            $('#preco_compra, #preco_venda').mask('000.000.000.000.000,00', {reverse: true});
+
+            // Lógica para mostrar/esconder campo fornecedor
+            $('#checkFornecedor').on('change', function() {
+                if ($(this).is(':checked')) {
+                    $('#divFornecedor').slideDown(); // Abre a gaveta
+                } else {
+                    $('#divFornecedor').slideUp();   // Fecha a gaveta
+                    $('#fornecedor').val("");        // Reseta o valor para nulo
+                }
+            });
         });
     </script>
 </body>

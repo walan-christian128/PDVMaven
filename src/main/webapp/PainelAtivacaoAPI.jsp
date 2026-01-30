@@ -1,326 +1,213 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8"
-	pageEncoding="UTF-8"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="Model.Usuario"%>
 <%@ page import="Model.ApiConfig"%>
 <%@ page import="DAO.ApiConfigDAO"%>
-<%@ page import="jakarta.servlet.RequestDispatcher"%>
 
 <%
-    // =========================================================
-    // 🛑 1. GUARD DE ACESSO (APENAS ROOT_MASTER)
-    // =========================================================
     Usuario usuarioLogado = (Usuario) session.getAttribute("usuario");
     String nomeBase = request.getParameter("base"); 
-    
-    // Capturar a mensagem de retorno (ex: após gerar token)
     String mensagem = request.getParameter("msg");
 
     if (usuarioLogado == null) {
-        response.sendRedirect("Login.jsp?erro=Sessão expirada ou acesso negado."); 
+        response.sendRedirect("Login.jsp?erro=Sessao_expirada"); 
         return;
     }
 
     String nivel = usuarioLogado.getNivel();
     if (!"ROOT_MASTER".equals(nivel) || nomeBase == null || nomeBase.isEmpty()) {
-        response.sendRedirect("Home.jsp?erro=Acesso_negado_Root_Master");
+        response.sendRedirect("Home.jsp?erro=Acesso_negado");
         return;
     }
     
-    // =========================================================
-    // 🔑 2. BUSCA DO TOKEN E STATUS
-    // =========================================================
-    // Usando Model.ApiConfig apiConfig para evitar conflito com ServletConfig
     Model.ApiConfig apiConfig = null; 
-    ApiConfigDAO dao = null; // Inicializar fora do try para o finally
-    String apiStatus = "Não Configurado"; 
+    String apiStatus = "DISCONNECTED"; 
     boolean tokenConfigurado = false;
     
     try {
-        dao = new ApiConfigDAO(nomeBase);
+        ApiConfigDAO dao = new ApiConfigDAO(nomeBase);
         apiConfig = dao.buscarConfigPorBase(nomeBase);
-        
         if (apiConfig != null && apiConfig.getAccessToken() != null && !apiConfig.getAccessToken().isEmpty()) {
             tokenConfigurado = true;
-            apiStatus = apiConfig.getSessionStatus();
+            apiStatus = apiConfig.getSessionStatus() != null ? apiConfig.getSessionStatus() : "DISCONNECTED";
         }
-        
     } catch (Exception e) {
-        // Erro de conexão com o banco ou DAO
-        apiStatus = "ERRO DAO: " + e.getMessage();
-        System.err.println("Erro ao carregar ApiConfigDAO: " + e.getMessage());
+        apiStatus = "ERRO_CONEXAO";
     }
-
 %>
 
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<script src="path/to/jquery-3.6.4.min.js"></script>
-
-<script src="path/to/jquery.mask.min.js"></script>
     <meta charset="UTF-8">
     <title>Ativação API - <%= nomeBase %></title>
     <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+    
     <style>
         .qr-code-area {
             border: 2px dashed #007bff;
-            min-height: 300px;
+            min-height: 350px;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             background-color: #f8f9fa;
             border-radius: 10px;
             margin-top: 20px;
+            padding: 20px;
         }
-        .text-break-all {
-            word-break: break-all;
+        #imagemQRCode { 
+            max-width: 90%; 
+            border: 8px solid white; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+            border-radius: 5px;
         }
+        .badge { font-size: 0.9rem; padding: 0.6em 1em; }
     </style>
 </head>
-<body
-	style="background-image: url('img/Gemini_Generated_Image_97a36f97a36f97a3.jpg'); background-size: cover; background-position: center; margin: 0; padding: 0; height: 100vh; width: 100vw;">
+<body style="background-image: url('img/Gemini_Generated_Image_97a36f97a36f97a3.jpg'); background-size: cover; background-position: center; min-height: 100vh;">
 
     <%@ include file="menu.jsp"%> 
 
-    <div class="container mt-5">
-        
+    <div class="container mt-5 pb-5">
         <div class="card shadow-lg">
-            <div class="card-header bg-primary text-white">
-                <h3 class="mb-0"><i class="fab fa-whatsapp"></i> Ativação da API de Mensagens</h3>
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h3 class="mb-0"><i class="fab fa-whatsapp"></i> Ativação WhatsApp</h3>
+                <span class="badge bg-light text-primary"><%= nomeBase %></span>
             </div>
             <div class="card-body">
                 
-                <h5 class="text-danger">Base de Cliente Ativa: <strong><%= nomeBase %></strong></h5>
-                <hr>
-
-                <% if ("config_salva_sucesso".equals(mensagem)) { %>
-                    <div class="alert alert-success text-center">
-                        Token gerado e salvo com sucesso!
-                    </div>
-                <% } %>
-                
                 <% if (tokenConfigurado) { %>
-                    <div class="alert alert-secondary text-break-all">
-                        <strong>Token de Acesso (Salvo):</strong> <%= apiConfig.getAccessToken() %>
+                    <div class="alert alert-info py-2">
+                        <small><strong>Token Ativo:</strong> <%= apiConfig.getAccessToken() %></small>
                     </div>
                 <% } %>
 
                 <div class="row">
-                    <div class="col-md-6">
-                        <h4>Status da Conexão: <span id="apiStatus" class="badge bg-<%= apiStatus.equals("CONNECTED") ? "success" : apiStatus.equals("QRCODE") ? "warning" : "danger" %>"><%= apiStatus %></span></h4>
-                        
-                        <div class="d-grid gap-2 mb-4">
-                            
-                            <button id="btnPrincipal" class="btn btn-success btn-lg" 
-                                <%= apiStatus.equals("CONNECTED") || apiStatus.equals("QRCODE") ? "disabled" : "" %>>
-                                <i class="fas fa-play-circle me-2"></i> 
-                                <%= tokenConfigurado ? "Iniciar Conexão e Gerar QR Code" : "Gerar Token de Acesso e Iniciar API" %>
-                            </button>
-                            
-                            <button id="btnDesconectar" class="btn btn-warning btn-lg" 
-                                <%= !apiStatus.equals("CONNECTED") && !apiStatus.equals("QRCODE") ? "disabled" : "" %>>
-                                <i class="fas fa-stop-circle me-2"></i> Desconectar Sessão
-                            </button>
-                            <button id="btnAtualizarStatus" class="btn btn-info btn-lg">
-                                <i class="fas fa-sync-alt me-2"></i> Atualizar Status
-                            </button>
+                    <div class="col-md-5 border-end">
+                        <div class="p-3">
+                            <h4>Status: <span id="apiStatus" class="badge bg-secondary"><%= apiStatus %></span></h4>
+                            <div class="d-grid gap-3 mt-4">
+                                <button id="btnPrincipal" class="btn btn-success btn-lg shadow-sm">
+                                    <i class="fas fa-play-circle me-2"></i> Iniciar e Gerar QR
+                                </button>
+                                <button id="btnDesconectar" class="btn btn-danger shadow-sm">
+                                    <i class="fas fa-power-off me-2"></i> Desconectar
+                                </button>
+                                <button id="btnAtualizarStatus" class="btn btn-outline-primary btn-sm mt-2">
+                                    <i class="fas fa-sync-alt me-2"></i> Verificar Conexão
+                                </button>
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="col-md-6">
-                        <h4 class="text-center">QR Code para Leitura</h4>
+                    <div class="col-md-7 text-center">
                         <div class="qr-code-area" id="qrCodeArea">
-                            <p class="text-muted" id="qrMessage">Status atual: <%= apiStatus %></p>
-                            <% if ("QRCODE".equals(apiStatus)) { %>
-                                <p class="text-warning">Aguardando leitura. Clique em "Atualizar Status" se o QR não aparecer.</p>
-                            <% } else if ("CONNECTED".equals(apiStatus)) { %>
-                                <i class="fas fa-check-circle text-success" style="font-size: 5rem;"></i><p class="mt-3">Sessão Ativa!</p>
-                            <% } %>
+                            <div id="placeholderArea">
+                                <i class="fas fa-qrcode fa-5x text-muted opacity-50 mb-3"></i>
+                                <p class="text-muted">Clique em "Iniciar" para gerar o código</p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="card-footer text-muted">
-                Usuário Master: <%= usuarioLogado.getNome() %> | Nível: <%= nivel %>
-            </div>
         </div>
-        
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
     <script src="bootstrap/js/bootstrap.bundle.min.js"></script>
     
     <script>
         const NOME_BASE = '<%= nomeBase %>';
-        const TOKEN_CONFIGURADO = <%= tokenConfigurado %>;
-        const QR_CODE_AREA = $('#qrCodeArea');
-        const API_STATUS_BADGE = $('#apiStatus');
         const BTN_PRINCIPAL = $('#btnPrincipal');
         const BTN_DESCONECTAR = $('#btnDesconectar');
+        const QR_CODE_AREA = $('#qrCodeArea');
+        const API_STATUS_BADGE = $('#apiStatus');
         
-        let qrTimer = null; 
-        const QR_TIMEOUT_MS = 10000; // 10 segundos para monitorar
+        let qrTimer = null;
 
-        function atualizarStatus(novoStatus) {
-            API_STATUS_BADGE.text(novoStatus);
+        function atualizarUI(status) {
+            API_STATUS_BADGE.text(status);
+            API_STATUS_BADGE.removeClass('bg-success bg-warning bg-danger bg-info bg-secondary');
             
-            // Habilita/Desabilita botões
-            const isConnectedOrQr = (novoStatus === 'CONNECTED' || novoStatus === 'QRCODE' || novoStatus === 'STARTING');
-            BTN_PRINCIPAL.prop('disabled', isConnectedOrQr);
-            BTN_DESCONECTAR.prop('disabled', novoStatus !== 'CONNECTED' && novoStatus !== 'QRCODE');
+            if (status === 'CONNECTED') API_STATUS_BADGE.addClass('bg-success');
+            else if (status === 'QRCODE' || status === 'STARTING') API_STATUS_BADGE.addClass('bg-warning');
+            else if (status === 'DISCONNECTED') API_STATUS_BADGE.addClass('bg-danger');
+            else API_STATUS_BADGE.addClass('bg-secondary');
 
-            // Atualiza a cor do badge
-            API_STATUS_BADGE.removeClass('bg-success bg-warning bg-danger bg-info').addClass(
-                novoStatus === 'CONNECTED' ? 'bg-success' : 
-                (novoStatus === 'QRCODE' || novoStatus === 'STARTING' || novoStatus === 'DISCONNECTING') ? 'bg-warning' : 'bg-danger'
-            );
-            
-            // Persiste o status no banco (Requer a implementação do AtualizarStatusApiServlet)
-            $.post('AtualizarStatusApiServlet', { nomeBase: NOME_BASE, status: novoStatus });
+            BTN_PRINCIPAL.prop('disabled', (status === 'CONNECTED' || status === 'QRCODE' || status === 'STARTING'));
         }
 
-
-        // =========================================================
-        // FUNÇÃO 1: INICIAR SESSÃO (Chama GerarQRCodeServlet)
-        // Usada quando o Token JÁ EXISTE no banco.
-        // =========================================================
         function iniciarSessao() {
-            atualizarStatus('STARTING');
-            BTN_PRINCIPAL.text('Conectando...');
-            QR_CODE_AREA.empty().html('<p class="text-info">Iniciando a sessão WPPConnect...</p>');
+            atualizarUI('STARTING');
+            QR_CODE_AREA.html('<div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div><p class="mt-3 fw-bold text-primary">Gerando QR Code no Servidor...</p>');
             
-            $.ajax({
-                url: 'GerarQRCodeServlet', 
-                type: 'POST',
-                data: { nomeBase: NOME_BASE, acao: 'iniciar' },
-                success: function(response) {
-                    if (response.success && response.qrcode) { 
-                        atualizarStatus('QRCODE');
-                        QR_CODE_AREA.html(`<img src="${response.qrcode}" alt="QR Code" style="max-width: 80%;">`);
-                        
-                        // Inicia o timer para monitorar o status
-                        if (qrTimer) clearInterval(qrTimer);
-                        qrTimer = setInterval(monitorarStatus, QR_TIMEOUT_MS); 
-                        
-                    } else {
-                        atualizarStatus('ERRO_API');
-                        QR_CODE_AREA.html('<p class="text-danger">Falha ao iniciar: ' + (response.message || 'Erro desconhecido.') + '</p>');
-                    }
-                },
-                error: function(xhr) {
-                    atualizarStatus('ERRO_COMUNICAÇÃO');
-                    QR_CODE_AREA.html('<p class="text-danger">Erro de comunicação com a API: ' + (xhr.statusText) + '</p>');
-                },
-                complete: function() {
-                    BTN_PRINCIPAL.text('Iniciar Conexão e Gerar QR Code');
-                }
-            });
-        }
-        
-        // =========================================================
-        // FUNÇÃO 2: GERAR TOKEN E INICIAR SESSÃO (Chama GerarTokenEIniciarApiServlet)
-        // Usada quando o Token NÃO EXISTE no banco.
-        // =========================================================
-        function gerarTokenEIniciar() {
-             atualizarStatus('STARTING_TOKEN');
-            BTN_PRINCIPAL.text('Gerando Token e Conectando...');
-            QR_CODE_AREA.empty().html('<p class="text-info">Gerando token de segurança e iniciando instância...</p>');
-
-            $.ajax({
-                url: 'GerarTokenEIniciarApiServlet', 
-                type: 'POST',
-                data: { nomeBase: NOME_BASE },
-                success: function(response) {
-                    if (response.success && response.qrcode) {
-                        // Se for sucesso, o token foi salvo e a sessão iniciada. Recarrega a página.
-                        window.location.href = "PainelAtivacaoAPI.jsp?base=" + NOME_BASE + "&msg=config_salva_sucesso";
-                    } else {
-                        // Trata erro na geração/início
-                        atualizarStatus('ERRO_API');
-                        QR_CODE_AREA.html('<p class="text-danger">Falha: ' + (response.message || 'Erro desconhecido ao gerar Token.') + '</p>');
-                    }
-                },
-                error: function(xhr) {
-                    atualizarStatus('ERRO_COMUNICAÇÃO');
-                    QR_CODE_AREA.html('<p class="text-danger">Erro de comunicação com o servidor. Status: ' + (xhr.statusText) + '</p>');
-                }
-            });
-        }
-
-
-        // =========================================================
-        // FUNÇÃO 3: MONITORAR STATUS (Chama GerarQRCodeServlet?acao=status)
-        // =========================================================
-        function monitorarStatus() {
-            $.ajax({
-                url: 'GerarQRCodeServlet',
-                type: 'POST',
-                data: { nomeBase: NOME_BASE, acao: 'status' },
-                success: function(response) {
-                    if (response.status) { 
-                        atualizarStatus(response.status);
-                        
-                        if (response.status === 'CONNECTED') {
-                            if (qrTimer) clearInterval(qrTimer);
-                            QR_CODE_AREA.html('<i class="fas fa-check-circle text-success" style="font-size: 5rem;"></i><p class="mt-3">Sessão Ativa!</p>');
-                        } else if (response.status === 'DISCONNECTED') {
-                            if (qrTimer) clearInterval(qrTimer);
-                            QR_CODE_AREA.html('<p class="text-danger">Desconectado. Inicie nova sessão.</p>');
-                        } else if (response.status === 'QRCODE' && response.qrcode) {
-                             QR_CODE_AREA.html(`<img src="${response.qrcode}" alt="QR Code" style="max-width: 80%;">`);
-                        } else if (response.status === 'QRCODE') {
-                            QR_CODE_AREA.html('<p class="text-warning">QR Code válido, mas não foi retornado na última consulta. Aguarde ou clique em Iniciar novamente.</p>');
-                        }
-                    }
-                },
-                error: function() {
-                    console.log("Erro ao monitorar status.");
-                }
-            });
-        }
-        
-        // =========================================================
-        // FUNÇÃO 4: DESCONECTAR
-        // =========================================================
-        BTN_DESCONECTAR.on('click', function() {
-            if (!confirm("Tem certeza que deseja desconectar a sessão do WhatsApp?")) return;
-            
-            atualizarStatus('DISCONNECTING');
-            
-            $.ajax({
-                url: 'GerarQRCodeServlet',
-                type: 'POST',
-                data: { nomeBase: NOME_BASE, acao: 'desconectar' },
-                success: function() {
-                    atualizarStatus('DISCONNECTED');
+            $.post('GerarQRCodeServlet', { nomeBase: NOME_BASE, acao: 'iniciar' }, function(response) {
+                console.log("Resposta API:", response); // DEPURAÇÃO NO F12
+                
+                // Mapeia diferentes possíveis retornos do WPPConnect
+                let qrData = response.qrcode || response.base64 || (response.response ? response.response.qrcode : null);
+                
+                if (qrData) {
+                    atualizarUI('QRCODE');
+                    QR_CODE_AREA.html('<img id="imagemQRCode" src="' + qrData + '"><div class="alert alert-warning mt-3 py-1"><small>Leia o código acima com seu WhatsApp</small></div>');
+                    
                     if (qrTimer) clearInterval(qrTimer);
-                    QR_CODE_AREA.empty().html('<p class="text-danger">Sessão encerrada.</p>');
+                    qrTimer = setInterval(monitorarStatus, 5000);
+                } else if (response.status === 'CONNECTED' || response.connected === true) {
+                    marcarComoConectado();
+                } else {
+                    QR_CODE_AREA.html('<p class="text-danger"><i class="fas fa-exclamation-triangle"></i> Erro: O servidor não enviou a imagem.</p>');
+                    atualizarUI('DISCONNECTED');
+                }
+            }).fail(function(err) {
+                console.error("Erro Ajax:", err);
+                QR_CODE_AREA.html('<p class="text-danger">Erro técnico: Verifique se o Servlet e o Node estão ativos.</p>');
+                atualizarUI('ERRO_CONEXAO');
+            });
+        }
+
+        function monitorarStatus() {
+            $.post('GerarQRCodeServlet', { nomeBase: NOME_BASE, acao: 'status' }, function(response) {
+                let status = response.status || (response.response ? response.response.status : null);
+                if (status === 'CONNECTED' || response.connected === true) {
+                    marcarComoConectado();
                 }
             });
-        });
+        }
 
-        // =========================================================
-        // INICIALIZAÇÃO DE EVENTOS
-        // =========================================================
+        function marcarComoConectado() {
+            if (qrTimer) clearInterval(qrTimer);
+            atualizarUI('CONNECTED');
+            QR_CODE_AREA.html('<div class="animate__animated animate__zoomIn"><i class="fas fa-check-circle text-success fa-5x"></i><h4 class="mt-3">Conexão Estabelecida!</h4><p class="text-muted">Seu sistema está pronto para enviar mensagens.</p></div>');
+        }
+
+        function desconectar() {
+            if (!confirm("Deseja realmente encerrar a sessão do WhatsApp?")) return;
+            atualizarUI('STARTING');
+            $.post('GerarQRCodeServlet', { nomeBase: NOME_BASE, acao: 'desconectar' }, function() {
+                window.location.reload();
+            });
+        }
+
         $(document).ready(function() {
-            // Ligar o botão principal ao fluxo correto (Gerar ou Iniciar)
-            if (TOKEN_CONFIGURADO) {
-                BTN_PRINCIPAL.on('click', iniciarSessao);
-            } else {
-                BTN_PRINCIPAL.on('click', gerarTokenEIniciar);
-            }
+            // Removemos qualquer erro de máscara que possa travar o JS
+            try {
+                // Se houver campos de máscara no menu.jsp, eles continuam funcionando, 
+                // mas não chamamos nada aqui para não dar conflito.
+            } catch(e) { console.warn("Erro de máscara ignorado."); }
+
+            atualizarUI('<%= apiStatus %>');
             
-            // Ligar o botão de atualização
+            BTN_PRINCIPAL.on('click', iniciarSessao);
+            BTN_DESCONECTAR.on('click', desconectar);
             $('#btnAtualizarStatus').on('click', monitorarStatus);
 
-            // Se o status no banco for QRCODE na carga da página, iniciar monitoramento
             if ('<%= apiStatus %>' === 'QRCODE') {
-                if (qrTimer) clearInterval(qrTimer); // Garante que não há timer antigo
-                qrTimer = setInterval(monitorarStatus, QR_TIMEOUT_MS); 
+                qrTimer = setInterval(monitorarStatus, 5000);
             }
         });
-
     </script>
 </body>
 </html>

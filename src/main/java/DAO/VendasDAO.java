@@ -169,7 +169,12 @@ public class VendasDAO {
 	            stmt.setString(4, obj.getObs());
 	            stmt.setDouble(5, obj.getDesconto());
 	            stmt.setString(6, obj.getFormaPagamento());
-	            stmt.setInt(7, obj.getUsuario().getId());
+	         // Proteção extra no DAO
+	            if (obj.getUsuario() != null) {
+	                stmt.setInt(7, obj.getUsuario().getId()); // Use o número correto da sua coluna
+	            } else {
+	                stmt.setNull(7, java.sql.Types.INTEGER);
+	            }
 
 	            stmt.execute();
 	        } finally {

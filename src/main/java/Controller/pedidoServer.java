@@ -915,8 +915,17 @@ public class pedidoServer extends HttpServlet {
 	    novoPedido.setObservacoes(observacoes);
 	    novoPedido.setFormapagamento(formaPagamento);
 	    
+	    if ("MERCADOPAGOPAY".equalsIgnoreCase(formaPagamento)) {
+	    	novoPedido.setStatus(formaPagamento);
+        } else {
+        	novoPedido.setStatus("PAGA");
+        }
+
+	    
 	    UsuarioDAO userDAO = new UsuarioDAO(empresa);
 	    novoPedido.setEmpresa(userDAO.retornCompany(null, empresa, 1));
+	    
+	    boolean baixarEstoqueAgora = !"MERCADOPAGOPAY".equalsIgnoreCase(formaPagamento);
 
 	    // ✅ Tratamento seguro do subtotal vindo da tela (formato brasileiro)
 	    String subtotalStr = request.getParameter("subtotal");
@@ -964,9 +973,10 @@ public class pedidoServer extends HttpServlet {
 
 	            daoit.inserirItensPedidos(itp);
 
-	            int qtd_estoque_atual = daoProd.retornaEstoqueAtual(produto.getId());
-	            int qtd_atualizada = qtd_estoque_atual - quantidade;
-	            daoProd.baixarEstoque(produto.getId(), qtd_atualizada);
+	            if (baixarEstoqueAgora) {
+                    int qtd_estoque = daoProd.retornaEstoqueAtual(produto.getId());
+                    daoProd.baixarEstoque(produto.getId(), qtd_estoque - quantidade);
+                }
 	        }
 
 	        // Limpa o carrinho da sessão
@@ -980,7 +990,7 @@ public class pedidoServer extends HttpServlet {
 
 				if (cfg == null || cfg.getAccessToken() == null || cfg.getAccessToken().isEmpty()) {
 					System.err.println("Erro: Configuração de pagamento inválida para empresaId " + empresaId);
-					response.sendRedirect("erroPagamento.jsp?msg=access-token-invalido");
+					response.sendRedirect("Pagamento Indisponivel Pedidos.jsp?msg=access-token-invalido");
 					return;
 				}
 
@@ -1001,7 +1011,7 @@ public class pedidoServer extends HttpServlet {
 					String ngrokBaseUrl = getNgrokTunnelUrl();
 					if (ngrokBaseUrl == null) {
 						System.err.println("Erro: Não foi possível obter a URL do Ngrok. Verifique se o Ngrok está rodando.");
-						response.sendRedirect("erroPagamento.jsp?msg=ngrok-nao-online");
+						response.sendRedirect("Pagamento Indisponivel Pedidos.jsp?msg=ngrok-nao-online");
 						return;
 					}
 
@@ -1043,12 +1053,12 @@ public class pedidoServer extends HttpServlet {
 
 				} catch (MPApiException e) {
 					System.err.println("Erro na API do Mercado Pago: " + e.getApiResponse().getContent());
-					response.sendRedirect("erroPagamento.jsp?msg=erro-api-mp");
+					response.sendRedirect("Pagamento Indisponivel Pedidos.jsp?msg=erro-api-mp");
 					return;
 				} catch (Exception e) {
 					System.err.println("Erro na integração com Mercado Pago:");
 					e.printStackTrace();
-					response.sendRedirect("erroPagamento.jsp?msg=erro-geral-mp");
+					response.sendRedirect("Pagamento Indisponivel Pedidos.jsp?msg=erro-geral-mp");
 					return;
 				}
 			} 

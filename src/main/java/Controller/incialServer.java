@@ -368,18 +368,15 @@ public class incialServer extends HttpServlet {
 
         if (empresaBaseNome != null && !empresaBaseNome.trim().isEmpty()) {
             try {
-                // Instancia a classe que lida com a criação da base e inserção inicial
                 createData data = new createData(empresaBaseNome);
 
-                // --- 1. Captura de Dados do Formulário ---
                 String nomeUsuario = request.getParameter("nome");
                 String usuarioTelefone = request.getParameter("telefone");
                 String usuarioEmail = request.getParameter("email");
                 String usuarioSenha = request.getParameter("senha");
                 String empresaNomeFantasia = request.getParameter("nomeEmpresa");
                 String empresaCnpj = request.getParameter("empresaCnpj");
-                // CORREÇÃO: Usando o nome correto do campo do JSP
-                String empresaEndereco = request.getParameter("empresaEndereco"); 
+                String empresaEndereco = request.getParameter("empresaEdereco");
 
                 byte[] logoBytes = null;
                 Part filePart = request.getPart("logo");
@@ -389,7 +386,6 @@ public class incialServer extends HttpServlet {
                     logoBytes = inputStream.readAllBytes();
                 }
 
-                // --- 2. Validação Mínima ---
                 if (nomeUsuario == null || nomeUsuario.trim().isEmpty() ||
                     usuarioTelefone == null || usuarioTelefone.trim().isEmpty() ||
                     usuarioEmail == null || usuarioEmail.trim().isEmpty() ||
@@ -401,7 +397,6 @@ public class incialServer extends HttpServlet {
                     return;
                 }
 
-                // --- 3. Criação dos Modelos ---
                 Usuario uso = new Usuario();
                 uso.setNome(nomeUsuario);
                 uso.setTelefone(usuarioTelefone);
@@ -423,30 +418,18 @@ public class incialServer extends HttpServlet {
                         horaAbertura = null;
                         horaFechamento = null;
                     }
-                    // A observação está sendo passada como null, ajuste se necessário no futuro
-                    HorarioFuncionamento horario = new HorarioFuncionamento(i, horaAbertura, horaFechamento, aberto, null); 
+                    HorarioFuncionamento horario = new HorarioFuncionamento(i, horaAbertura, horaFechamento, aberto, null);
                     horarios.add(horario);
                 }
 
-                // --- 4. Ação no DAO e Captura do ID ---
-                // ***IMPORTANTE: Assumimos que este método agora retorna o ID da empresa recém-criada***
-                int idDaNovaBase = data.inserirEmpresaUsuario(emp, uso, horarios); 
+                data.inserirEmpresaUsuario(emp, uso, horarios);
 
-                
-                // --- 5. Redirecionamento de Sucesso com Parâmetros ---
-                // Redirecionamos para o Login.jsp (ponto de entrada) com os parâmetros de sucesso.
-                // O JSP (se for o 'Login.jsp') deve conter o código do Modal e a lógica JS para exibi-lo.
-                String redirectUrl = "Login.jsp?status=sucesso&id_empresa_cadastrada=" + idDaNovaBase + "&nome_base=" + empresaBaseNome;
-                
-                // Adicionamos a mensagem no request (opcional, mas bom para login/redirecionamento)
                 request.setAttribute("successMessage", "Cadastro realizado com sucesso! Faça seu login.");
-                response.sendRedirect(redirectUrl);
-
+                request.getRequestDispatcher("Login.jsp").forward(request, response);
 
             } catch (Exception e) {
                 e.printStackTrace();
                 request.setAttribute("errorMessage", "Erro ao realizar o cadastro: " + e.getMessage());
-                // Em caso de erro, volta para a página de cadastro
                 request.getRequestDispatcher("cadastroUserEmpresa.jsp").forward(request, response);
             }
         } else {
@@ -454,6 +437,7 @@ public class incialServer extends HttpServlet {
             request.getRequestDispatcher("cadastroUserEmpresa.jsp").forward(request, response);
         }
     }
+
     private Image converterImagem(byte[] imagemBytes) {
         try {
             ByteArrayInputStream is = new ByteArrayInputStream(imagemBytes);

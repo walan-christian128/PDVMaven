@@ -61,7 +61,7 @@ public class ConfigPagamentoServlet extends HttpServlet {
             }
 
             // Redireciona para página inicial
-            response.sendRedirect(request.getContextPath() + "Home.jsp");
+            response.sendRedirect("Home.jsp");
 
         } catch (Exception e) {
             e.printStackTrace();
